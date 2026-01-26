@@ -1,0 +1,8 @@
+@import "./styles/globals.css";
+@import "./styles/theme.css";
+
+/* App baseline */
+#root {
+  display: flex;
+  min-height: 100%;
+}
