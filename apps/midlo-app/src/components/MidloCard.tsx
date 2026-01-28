@@ -15,12 +15,12 @@ export default function MidloCard({ children, style, ...rest }: Props) {
         {
           width: '100%',
           maxWidth: 480,
-          padding: theme.spacing.lg,
+          padding: theme.spacing.xl,
           borderRadius: theme.radii.lg,
           backgroundColor: theme.colors.surface,
           borderWidth: 1,
-          borderColor: theme.colors.accent,
-          ...theme.shadow.card, // polished: subtle elevation
+          borderColor: theme.colors.divider,
+          ...theme.shadow.card,
         },
         style,
       ]}

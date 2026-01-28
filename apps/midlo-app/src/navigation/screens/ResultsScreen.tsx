@@ -34,7 +34,7 @@ export default function ResultsScreen() {
       )}, ${midpoint.lng.toFixed(4)})`;
       await Share.share({ message });
     } catch {
-      // ignore for now
+      // ignore
     }
   };
 
@@ -49,10 +49,15 @@ export default function ResultsScreen() {
         }}
       >
         <MidloCard>
-          <View style={{ alignItems: 'center', marginBottom: theme.spacing.lg }}>
+          <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
             <Image
               source={Logo}
-              style={{ width: 80, height: 26, resizeMode: 'contain', marginBottom: theme.spacing.sm }}
+              style={{
+                width: 80,
+                height: 26,
+                resizeMode: 'contain',
+                marginBottom: theme.spacing.sm,
+              }}
             />
             <Text
               style={{
@@ -97,8 +102,9 @@ export default function ResultsScreen() {
             <View
               style={{
                 marginTop: theme.spacing.lg,
-                padding: theme.spacing.md,
-                borderRadius: theme.radii.md,
+                paddingVertical: theme.spacing.sm,
+                paddingHorizontal: theme.spacing.lg,
+                borderRadius: theme.radii.pill,
                 backgroundColor: theme.colors.highlight,
               }}
             >
@@ -158,14 +164,17 @@ export default function ResultsScreen() {
                   onPress={() => {
                     if (p.placeId) navigation.navigate('Place', { placeId: p.placeId });
                   }}
-                  style={{
-                    padding: theme.spacing.md,
-                    borderWidth: 1,
-                    borderColor: theme.colors.divider,
-                    borderRadius: theme.radii.md,
-                    backgroundColor: theme.colors.surface,
-                    ...theme.shadow.card,
-                  }}
+                  style={({ pressed }) => [
+                    {
+                      padding: theme.spacing.md,
+                      borderWidth: 1,
+                      borderColor: theme.colors.divider,
+                      borderRadius: theme.radii.md,
+                      backgroundColor: theme.colors.surface,
+                      ...theme.shadow.card,
+                    },
+                    pressed ? { backgroundColor: theme.colors.highlight } : null,
+                  ]}
                 >
                   <Text
                     style={{
@@ -177,7 +186,12 @@ export default function ResultsScreen() {
                   >
                     {p.name}
                   </Text>
-                  <Text style={{ color: theme.colors.muted, fontSize: theme.typography.caption }}>
+                  <Text
+                    style={{
+                      color: theme.colors.muted,
+                      fontSize: theme.typography.caption,
+                    }}
+                  >
                     {p.distance} from midpoint
                   </Text>
                 </Pressable>

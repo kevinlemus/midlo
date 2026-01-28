@@ -6,6 +6,8 @@ import {
   ActivityIndicator,
   Keyboard,
   StyleSheet,
+  Animated,
+  Easing,
   type TextInputProps,
 } from 'react-native';
 
@@ -36,6 +38,8 @@ export default function AddressAutocompleteInput({
   const blurTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const committedValueRef = React.useRef<string | null>(null);
 
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
   const query = value.trim();
 
   React.useEffect(() => {
@@ -44,7 +48,6 @@ export default function AddressAutocompleteInput({
       blurTimerRef.current = null;
     }
 
-    // If a suggestion was just selected and the input matches it, keep the dropdown closed.
     if (committedValueRef.current && query === committedValueRef.current) {
       abortRef.current?.abort();
       abortRef.current = null;
@@ -55,13 +58,13 @@ export default function AddressAutocompleteInput({
       return;
     }
 
-    // Only query when it feels like a real address search.
     if (query.length < 3) {
       abortRef.current?.abort();
       abortRef.current = null;
       setLoading(false);
       setError(null);
       setSuggestions([]);
+      setOpen(false);
       return;
     }
 
@@ -77,14 +80,31 @@ export default function AddressAutocompleteInput({
         .autocomplete(query, controller.signal)
         .then((s) => {
           setSuggestions(s);
-          // Keep the dropdown feeling responsive: open when results exist.
-          if (s.length > 0) setOpen(true);
+          if (s.length > 0) {
+            setOpen(true);
+            fadeAnim.setValue(0);
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 160,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }).start();
+          } else {
+            setOpen(false);
+          }
         })
         .catch((e) => {
-          // Abort is expected during typing.
           if (e instanceof Error && e.name === 'AbortError') return;
           setError(e instanceof Error ? e.message : 'Failed to load suggestions');
           setSuggestions([]);
+          setOpen(true);
+          fadeAnim.setValue(0);
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 160,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }).start();
         })
         .finally(() => {
           setLoading(false);
@@ -92,7 +112,7 @@ export default function AddressAutocompleteInput({
     }, 250);
 
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, fadeAnim]);
 
   React.useEffect(() => {
     return () => {
@@ -129,15 +149,22 @@ export default function AddressAutocompleteInput({
             onChangeText(t);
           }}
           onFocus={(e) => {
-            // Don't pop the dropdown back open for a committed selection.
             const nextOpen =
               value.trim().length >= 3 &&
               (!committedValueRef.current || value.trim() !== committedValueRef.current);
-            setOpen(nextOpen);
+            if (nextOpen) {
+              setOpen(true);
+              fadeAnim.setValue(0);
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 160,
+                easing: Easing.out(Easing.quad),
+                useNativeDriver: true,
+              }).start();
+            }
             rest.onFocus?.(e);
           }}
           onBlur={(e) => {
-            // Delay closing so a tap on a suggestion still registers.
             blurTimerRef.current = setTimeout(() => setOpen(false), 150);
             rest.onBlur?.(e);
           }}
@@ -154,10 +181,23 @@ export default function AddressAutocompleteInput({
       </View>
 
       {showDropdown ? (
-        <View style={styles.dropdown}>
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
+        <Animated.View
+          style={[
+            styles.dropdown,
+            {
+              opacity: fadeAnim,
+              transform: [
+                {
+                  translateY: fadeAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-4, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           {suggestions.map((s) => (
             <Pressable
@@ -177,9 +217,13 @@ export default function AddressAutocompleteInput({
           {loading && suggestions.length === 0 ? (
             <Text style={styles.hintText}>Searching…</Text>
           ) : !loading && !error && suggestions.length === 0 ? (
-            <Text style={styles.hintText}>No matches</Text>
+            <Text style={styles.hintText}>No matches. Try adding a street or city.</Text>
           ) : null}
-        </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Powered by Google</Text>
+          </View>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -206,12 +250,12 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     marginTop: 8,
-    borderRadius: theme.radii.md,
+    borderRadius: theme.radii.lg,
     borderWidth: 1,
     borderColor: theme.colors.divider,
     backgroundColor: theme.colors.surface,
     overflow: 'hidden',
-    maxHeight: 220,
+    maxHeight: 260,
     ...theme.shadow.card,
   },
   row: {
@@ -238,5 +282,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     color: theme.colors.danger,
     fontSize: theme.typography.caption,
+  },
+  footer: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+    backgroundColor: theme.colors.bg,
+  },
+  footerText: {
+    fontSize: theme.typography.caption,
+    color: theme.colors.muted,
+    textAlign: 'right',
   },
 });

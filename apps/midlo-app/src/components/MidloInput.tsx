@@ -11,11 +11,12 @@ export default function MidloInput(props: TextInputProps) {
         {
           borderWidth: 1,
           borderColor: theme.colors.accent,
-          borderRadius: theme.radii.md,
+          borderRadius: theme.radii.lg,
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.sm,
           backgroundColor: theme.colors.surface,
           color: theme.colors.text,
+          fontSize: theme.typography.body,
         },
         props.style,
       ]}

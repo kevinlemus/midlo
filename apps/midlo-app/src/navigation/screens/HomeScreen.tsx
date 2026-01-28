@@ -31,7 +31,7 @@ export default function HomeScreen() {
 
   const handleFindMidpoint = async () => {
     if (!locationA || !locationB) {
-      alert('Please enter both locations');
+      setError('Add both locations to find a fair midpoint.');
       return;
     }
 
@@ -47,13 +47,13 @@ export default function HomeScreen() {
         locationB,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
+      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const isDisabled = !locationA || !locationB;
+  const isDisabled = !locationA || !locationB || isLoading;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -66,14 +66,47 @@ export default function HomeScreen() {
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
-            padding: theme.spacing.xl,
+            paddingHorizontal: theme.spacing.xl,
+            paddingVertical: theme.spacing.xl,
           }}
         >
           <MidloCard>
-            <View style={{ alignItems: 'center', marginBottom: theme.spacing.lg }}>
+            <View
+              style={{
+                alignItems: 'center',
+                marginBottom: theme.spacing.xl,
+              }}
+            >
+              <View
+                style={{
+                  paddingVertical: theme.spacing.sm,
+                  paddingHorizontal: theme.spacing.lg,
+                  borderRadius: theme.radii.pill,
+                  backgroundColor: theme.colors.highlight,
+                  marginBottom: theme.spacing.md,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: theme.typography.caption,
+                    color: theme.colors.primaryDark,
+                    fontWeight: theme.typography.weight.medium as any,
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Meet in the middle
+                </Text>
+              </View>
+
               <Image
                 source={Logo}
-                style={{ width: 120, height: 40, resizeMode: 'contain', marginBottom: theme.spacing.sm }}
+                style={{
+                  width: 120,
+                  height: 40,
+                  resizeMode: 'contain',
+                  marginBottom: theme.spacing.sm,
+                }}
               />
               <Text
                 style={{
@@ -81,10 +114,10 @@ export default function HomeScreen() {
                   color: theme.colors.primaryDark,
                   fontWeight: theme.typography.weight.bold as any,
                   textAlign: 'center',
-                  marginBottom: theme.spacing.xs,
+                  marginBottom: theme.spacing.sm,
                 }}
               >
-                Meet in the middle with Midlo
+                A fair place to meet, in seconds.
               </Text>
               <Text
                 style={{
@@ -93,11 +126,11 @@ export default function HomeScreen() {
                   textAlign: 'center',
                 }}
               >
-                Drop in two locations and we’ll find a fair, friendly halfway spot.
+                Drop in two locations and we’ll find a friendly halfway spot that feels fair to both sides.
               </Text>
             </View>
 
-            <View style={{ gap: theme.spacing.md }}>
+            <View style={{ gap: theme.spacing.lg }}>
               <View>
                 <Text
                   style={{
@@ -140,28 +173,33 @@ export default function HomeScreen() {
 
               <View style={{ marginTop: theme.spacing.lg }}>
                 <MidloButton
-                  title="Find midpoint"
+                  title={isLoading ? 'Finding midpoint…' : 'Find midpoint'}
                   onPress={handleFindMidpoint}
-                  disabled={isDisabled || isLoading}
+                  disabled={isDisabled}
                 />
               </View>
 
               {error && (
-                <Text
+                <View
                   style={{
-                    marginTop: theme.spacing.md,
+                    marginTop: theme.spacing.sm,
                     padding: theme.spacing.md,
                     borderRadius: theme.radii.md,
                     borderWidth: 1,
-                    borderColor: '#ffb4b4',
-                    backgroundColor: '#2a0f0f',
-                    color: '#ffd2d2',
-                    fontSize: theme.typography.caption,
-                    textAlign: 'center',
+                    borderColor: '#FCA5A5',
+                    backgroundColor: '#FEF2F2',
                   }}
                 >
-                  {error}
-                </Text>
+                  <Text
+                    style={{
+                      color: theme.colors.danger,
+                      fontSize: theme.typography.caption,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {error}
+                  </Text>
+                </View>
               )}
 
               <Text

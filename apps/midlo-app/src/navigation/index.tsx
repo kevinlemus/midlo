@@ -28,7 +28,8 @@ export type RootStackParamList = {
   };
 };
 
-const StackNavigator = Platform.OS === 'web' ? createStackNavigator : createNativeStackNavigator;
+const StackNavigator =
+  Platform.OS === 'web' ? createStackNavigator : createNativeStackNavigator;
 const Stack = StackNavigator<RootStackParamList>();
 
 const navTheme = {
@@ -56,9 +57,10 @@ export default function RootNavigation() {
             fontSize: theme.typography.body,
             fontWeight: theme.typography.weight.medium as any,
           },
+          headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'midlo' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Midlo' }} />
         <Stack.Screen name="Results" component={ResultsScreen} options={{ title: 'Midpoint' }} />
         <Stack.Screen name="Map" component={MapScreen} options={{ title: 'Map' }} />
         <Stack.Screen name="Place" component={PlaceScreen} options={{ title: 'Place' }} />
