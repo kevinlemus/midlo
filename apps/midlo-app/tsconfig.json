@@ -6,8 +6,10 @@
     "noImplicitAny": false,
     "paths": {
       "theme": ["src/theme/index.ts"],
-      "navigation": ["src/navigation/index.ts"]
+      "theme/*": ["src/theme/*"],
+      "navigation": ["src/navigation/index.ts"],
+      "navigation/*": ["src/navigation/*"]
     }
   },
-  "include": ["./**/*.ts", "./**/*.tsx"]
+  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"]
 }

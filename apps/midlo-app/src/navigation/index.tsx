@@ -7,18 +7,24 @@ import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from './screens/HomeScreen';
 import ResultsScreen from './screens/ResultsScreen';
 import MapScreen from './screens/MapScreen';
+import PlaceScreen from './screens/PlaceScreen';
 import { theme } from 'theme';
+import type { Place } from '../services/api';
 
 export type RootStackParamList = {
   Home: undefined;
   Results: {
     midpoint: { lat: number; lng: number };
-    places: { name: string; distance: string }[];
+    places: Place[];
     locationA: string;
     locationB: string;
   };
   Map: {
     midpoint: { lat: number; lng: number };
+    places: Place[];
+  };
+  Place: {
+    placeId: string;
   };
 };
 
@@ -55,6 +61,7 @@ export default function RootNavigation() {
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'midlo' }} />
         <Stack.Screen name="Results" component={ResultsScreen} options={{ title: 'Midpoint' }} />
         <Stack.Screen name="Map" component={MapScreen} options={{ title: 'Map' }} />
+        <Stack.Screen name="Place" component={PlaceScreen} options={{ title: 'Place' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

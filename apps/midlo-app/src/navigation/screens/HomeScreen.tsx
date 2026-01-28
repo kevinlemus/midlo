@@ -14,7 +14,8 @@ import { theme } from 'theme';
 import type { RootStackParamList } from 'navigation';
 import MidloButton from '../../components/MidloButton';
 import MidloCard from '../../components/MidloCard';
-import MidloInput from '../../components/MidloInput';
+import AddressAutocompleteInput from '../../components/AddressAutocompleteInput';
+import { api } from '../../services/api';
 
 import Logo from '../../assets/images/midlo_logo.png';
 
@@ -25,32 +26,31 @@ export default function HomeScreen() {
   const [locationA, setLocationA] = useState('');
   const [locationB, setLocationB] = useState('');
 
-  const getMockMidpoint = () => ({
-    lat: 39.7684,
-    lng: -86.1581,
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const getMockPlaces = () => [
-    { name: 'Midpoint Coffee', distance: '0.4 mi' },
-    { name: 'Neutral Ground Bistro', distance: '0.7 mi' },
-    { name: 'Halfway House Bar', distance: '1.0 mi' },
-  ];
-
-  const handleFindMidpoint = () => {
+  const handleFindMidpoint = async () => {
     if (!locationA || !locationB) {
       alert('Please enter both locations');
       return;
     }
 
-    const midpoint = getMockMidpoint();
-    const places = getMockPlaces();
-
-    navigation.navigate('Results', {
-      midpoint,
-      places,
-      locationA,
-      locationB,
-    });
+    setIsLoading(true);
+    setError(null);
+    try {
+      const midpoint = await api.getMidpoint(locationA, locationB);
+      const places = await api.getPlaces(midpoint.lat, midpoint.lng);
+      navigation.navigate('Results', {
+        midpoint,
+        places,
+        locationA,
+        locationB,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const isDisabled = !locationA || !locationB;
@@ -110,10 +110,11 @@ export default function HomeScreen() {
                 >
                   Location A
                 </Text>
-                <MidloInput
+                <AddressAutocompleteInput
                   value={locationA}
                   onChangeText={setLocationA}
                   placeholder="Enter first location"
+                  returnKeyType="next"
                 />
               </View>
 
@@ -129,10 +130,11 @@ export default function HomeScreen() {
                 >
                   Location B
                 </Text>
-                <MidloInput
+                <AddressAutocompleteInput
                   value={locationB}
                   onChangeText={setLocationB}
                   placeholder="Enter second location"
+                  returnKeyType="done"
                 />
               </View>
 
@@ -140,9 +142,27 @@ export default function HomeScreen() {
                 <MidloButton
                   title="Find midpoint"
                   onPress={handleFindMidpoint}
-                  disabled={isDisabled}
+                  disabled={isDisabled || isLoading}
                 />
               </View>
+
+              {error && (
+                <Text
+                  style={{
+                    marginTop: theme.spacing.md,
+                    padding: theme.spacing.md,
+                    borderRadius: theme.radii.md,
+                    borderWidth: 1,
+                    borderColor: '#ffb4b4',
+                    backgroundColor: '#2a0f0f',
+                    color: '#ffd2d2',
+                    fontSize: theme.typography.caption,
+                    textAlign: 'center',
+                  }}
+                >
+                  {error}
+                </Text>
+              )}
 
               <Text
                 style={{

@@ -4,33 +4,39 @@ import SearchBar from "../components/SearchBar";
 import Button from "../components/Button";
 import MapView from "../components/MapView";
 import PlaceCard from "../components/PlaceCard";
+import { api } from "../services/api";
+import type { Place } from "../types";
+import { useNavigate } from "react-router-dom";
 
 import midloLogo from "../assets/midlo_logo.png";
 
 export default function Home() {
+  const navigate = useNavigate();
   const [aText, setAText] = useState("");
   const [bText, setBText] = useState("");
 
   // MVP: results only appear AFTER pressing the button
   const [midpoint, setMidpoint] = useState<null | { lat: number; lng: number }>(null);
-  const [places, setPlaces] = useState<
-    { name: string; distance: string }[]
-  >([]);
+  const [places, setPlaces] = useState<Place[]>([]);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isDisabled = !aText || !bText;
 
-  const handleFind = () => {
-    // Same mock midpoint as the mobile app
-    const mockMidpoint = { lat: 39.7684, lng: -86.1581 };
-
-    const mockPlaces = [
-      { name: "Midpoint Coffee", distance: "0.4 mi" },
-      { name: "Neutral Ground Bistro", distance: "0.7 mi" },
-      { name: "Halfway House Bar", distance: "1.0 mi" },
-    ];
-
-    setMidpoint(mockMidpoint);
-    setPlaces(mockPlaces);
+  const handleFind = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const mp = await api.getMidpoint(aText, bText);
+      setMidpoint(mp);
+      const pl = await api.getPlaces(mp.lat, mp.lng);
+      setPlaces(pl);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -133,9 +139,25 @@ export default function Home() {
             <Button
               title="Find midpoint"
               onClick={handleFind}
-              disabled={isDisabled}
+              disabled={isDisabled || isLoading}
             />
           </div>
+
+          {error && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: "var(--radius-md)",
+                border: "1px solid #ffb4b4",
+                backgroundColor: "#2a0f0f",
+                color: "#ffd2d2",
+                fontSize: "var(--font-size-caption)",
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <p
             style={{
@@ -210,7 +232,14 @@ export default function Home() {
 
             <div style={{ display: "grid", gap: 8 }}>
               {places.map((p, idx) => (
-                <PlaceCard key={idx} title={p.name} distance={p.distance} />
+                <PlaceCard
+                  key={p.placeId ?? String(idx)}
+                  title={p.name}
+                  distance={p.distance}
+                  onClick={() => {
+                    if (p.placeId) navigate(`/p/${encodeURIComponent(p.placeId)}`);
+                  }}
+                />
               ))}
             </div>
           </div>

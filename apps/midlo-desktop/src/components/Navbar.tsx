@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import logo from "../assets/midlo_logo.png";
 
 export default function Navbar() {
   return (
@@ -33,7 +32,7 @@ export default function Navbar() {
             gap: 8,
           }}
         >
-          <Image src={logo} alt="Midlo" width={110} height={32} style={{ objectFit: "contain" }} />
+          <Image src="/midlo_logo.png" alt="Midlo" width={110} height={32} style={{ objectFit: "contain" }} />
         </Link>
 
         <div

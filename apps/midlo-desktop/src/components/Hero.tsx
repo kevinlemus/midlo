@@ -19,7 +19,7 @@ export default function Hero() {
         }}
       >
         <Image
-          src={require("../assets/midlo_logo.png")}
+          src="/midlo_logo.png"
           alt="Midlo"
           width={160}
           height={48}

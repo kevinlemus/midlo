@@ -6,6 +6,7 @@ import {
   ScrollView,
   Share,
   Image,
+  Pressable,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -117,7 +118,7 @@ export default function ResultsScreen() {
           <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
             <MidloButton
               title="View on map"
-              onPress={() => navigation.navigate('Map', { midpoint })}
+              onPress={() => navigation.navigate('Map', { midpoint, places })}
               variant="primary"
             />
             <MidloButton title="Share link" onPress={handleShare} variant="secondary" />
@@ -152,8 +153,11 @@ export default function ResultsScreen() {
 
             <View style={{ gap: theme.spacing.sm }}>
               {places.map((p, idx) => (
-                <View
-                  key={idx}
+                <Pressable
+                  key={p.placeId ?? String(idx)}
+                  onPress={() => {
+                    if (p.placeId) navigation.navigate('Place', { placeId: p.placeId });
+                  }}
                   style={{
                     padding: theme.spacing.md,
                     borderWidth: 1,
@@ -176,7 +180,7 @@ export default function ResultsScreen() {
                   <Text style={{ color: theme.colors.muted, fontSize: theme.typography.caption }}>
                     {p.distance} from midpoint
                   </Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>

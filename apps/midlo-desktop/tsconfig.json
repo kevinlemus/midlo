@@ -4,6 +4,7 @@
     "allowJs": false,
     "incremental": true,
     "types": ["node", "react"],
+    "typeRoots": ["./node_modules/@types"],
     "noEmit": true,
     "isolatedModules": true,
     "jsx": "preserve",
