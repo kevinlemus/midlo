@@ -138,7 +138,10 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
   };
 
   return (
-    <div ref={ref} style={{ position: "relative", width: "100%", zIndex: 999 }}>
+    <div
+      ref={ref}
+      style={{ position: "relative", width: "100%", zIndex: open ? 5000 : 1 }}
+    >
       <input
         placeholder={placeholder}
         value={value}
@@ -196,6 +199,7 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
             left: 0,
             right: 0,
             marginTop: 4,
+            zIndex: 5001,
             borderRadius: "var(--radius-md)",
             border: "1px solid var(--color-accent)",
             backgroundColor: "var(--color-surface)",

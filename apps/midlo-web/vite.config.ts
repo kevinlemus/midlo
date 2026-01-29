@@ -11,6 +11,28 @@ const reactDomPath = path.resolve(__dirname, "node_modules/react-dom");
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    // Let the frontend call `/autocomplete`, `/midpoint`, etc. as same-origin in dev.
+    // Vite will proxy to the backend on localhost:8080.
+    proxy: {
+      '/autocomplete': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/midpoint': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/places': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/place-photo': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     // Critical for monorepos: prevent multiple React copies (causes ReactCurrentDispatcher undefined)
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],

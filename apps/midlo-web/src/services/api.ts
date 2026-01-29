@@ -9,6 +9,10 @@ function apiBaseUrl() {
   const env = (import.meta as any).env;
   const v = env?.VITE_API_BASE_URL as string | undefined;
   if (v && v.trim()) return v.trim().replace(/\/$/, "");
+
+  // In local dev, call the API by relative path and let Vite proxy it.
+  if ((import.meta as any).env?.DEV) return "";
+
   return typeof window !== "undefined"
     ? `http://${window.location.hostname}:8080`
     : "http://localhost:8080";
@@ -65,6 +69,13 @@ export const api = {
 };
 
 export function placePhotoUrl(photoName: string, maxWidthPx = 1600) {
+  if (!API_BASE_URL) {
+    const url = new URL("/place-photo", window.location.origin);
+    url.searchParams.set("name", photoName);
+    url.searchParams.set("maxWidthPx", String(maxWidthPx));
+    return url.toString();
+  }
+
   const url = new URL("/place-photo", API_BASE_URL);
   url.searchParams.set("name", photoName);
   url.searchParams.set("maxWidthPx", String(maxWidthPx));
