@@ -19,20 +19,20 @@ export default function Hero() {
         }}
       >
         <Image
-          src="/midlo_logo.png"
+          src="/midlo_hero_logo.png"
           alt="Midlo"
-          width={160}
-          height={48}
-          style={{ objectFit: "contain", marginBottom: 24 }}
+          width={180} // slightly larger for hero presence
+          height={220}
+          style={{ objectFit: "contain", marginBottom: 28 }}
         />
 
         <h1
           style={{
-        fontSize: "var(--font-size-heading-xl)",
-        color: "var(--color-primary-dark)",
-        margin: 0,
-        marginBottom: 16,
-        fontWeight: 700,
+            fontSize: "var(--font-size-heading-xl)",
+            color: "var(--color-primary-dark)",
+            margin: 0,
+            marginBottom: 16,
+            fontWeight: 700,
           }}
         >
           Meet in the middle with Midlo
@@ -40,10 +40,11 @@ export default function Hero() {
 
         <p
           style={{
-        fontSize: "var(--font-size-subheading)",
-        color: "var(--color-text-secondary)",
-        maxWidth: 640,
-        margin: "0 auto",
+            fontSize: "var(--font-size-subheading)",
+            color: "var(--color-text-secondary)",
+            maxWidth: 640,
+            margin: "0 auto",
+            lineHeight: 1.5,
           }}
         >
           A fair, friendly midpoint finder that makes meeting up actually feel

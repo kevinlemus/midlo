@@ -38,6 +38,7 @@ export default function FeatureCard({ title, description, icon }: Props) {
           margin: 0,
           fontSize: "var(--font-size-body)",
           color: "var(--color-text-secondary)",
+          lineHeight: 1.5,
         }}
       >
         {description}

@@ -21,7 +21,7 @@ export default function Navbar() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 24px",
+          padding: "0 32px", // subtle balance improvement
         }}
       >
         <Link
@@ -32,14 +32,20 @@ export default function Navbar() {
             gap: 8,
           }}
         >
-          <Image src="/midlo_logo.png" alt="Midlo" width={110} height={32} style={{ objectFit: "contain" }} />
+          <Image
+            src="/midlo_logo.png"
+            alt="Midlo"
+            width={95} // reduced for better balance
+            height={75}
+            style={{ objectFit: "contain" }}
+          />
         </Link>
 
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 20,
+            gap: 24,
             fontSize: "var(--font-size-body)",
             color: "var(--color-text-secondary)",
           }}

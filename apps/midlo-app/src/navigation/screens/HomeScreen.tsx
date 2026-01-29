@@ -112,7 +112,7 @@ export default function HomeScreen() {
                 source={Logo}
                 style={{
                   width: 120,
-                  height: 40,
+                  height: 60,
                   resizeMode: 'contain',
                   marginBottom: theme.spacing.sm,
                 }}

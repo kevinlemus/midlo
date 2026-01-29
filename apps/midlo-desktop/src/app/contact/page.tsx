@@ -42,14 +42,14 @@ export default function ContactPage() {
         </p>
 
         <a
-          href="mailto:hello@midlo.app"
+          href="mailto:hello@midlo.ai"
           style={{
             fontSize: "var(--font-size-subheading)",
             color: "var(--color-primary-dark)",
             fontWeight: 600,
           }}
         >
-          hello@midlo.app
+          hello@midlo.ai
         </a>
       </section>
     </>

@@ -16,6 +16,12 @@ body {
   color: var(--color-text);
 }
 
+html {
+  /* Prevent horizontal layout shift between pages that do/don't need scrolling */
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 body {
   min-height: 100vh;
 }

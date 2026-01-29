@@ -41,7 +41,7 @@ export default function OpenInAppBanner({ context = "home" }: Props) {
   const handleOpen = () => {
     // For now, send to the main site / store page.
     // Later, this can be upgraded to a deep link (midlo://) + store fallback.
-    window.open("https://midlo.app", "_blank");
+    window.open("https://midlo.ai", "_blank");
   };
 
   const label =
