@@ -23,17 +23,19 @@
   --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.08);
 
   /* Typography */
-  --font-family-sans:
-    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-size-heading: 24px;
   --font-size-subheading: 20px;
   --font-size-body: 16px;
   --font-size-caption: 12px;
-}
 
-/* Reserved for future app-wide layout if needed */
-.app-root {
-  width: 100%;
+  /* Spacing (NEW) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
 }
 
 /* Map pulse animation */
@@ -50,4 +52,22 @@
     transform: scale(1.15);
     opacity: 0;
   }
+}
+
+/* Button micro-interactions (NEW) */
+.midlo-button {
+  transition:
+    transform 0.08s ease-out,
+    box-shadow 0.08s ease-out,
+    background-color 0.12s ease-out,
+    opacity 0.12s ease-out;
+}
+
+.midlo-button:not(:disabled):hover {
+  transform: scale(0.99);
+}
+
+.midlo-button:not(:disabled):active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }

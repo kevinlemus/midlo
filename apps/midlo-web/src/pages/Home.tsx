@@ -9,6 +9,7 @@ import OpenInAppBanner from "../components/OpenInAppBanner";
 import { api } from "../services/api";
 import type { Place } from "../types";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { track } from "../services/analytics";
 
 import midloLogo from "../assets/midlo_logo.png";
 
@@ -27,7 +28,6 @@ export default function Home() {
 
   const isDisabled = !aText || !bText;
 
-  // On mount: hydrate from URL (?a=...&b=...)
   useEffect(() => {
     const a = searchParams.get("a") ?? "";
     const b = searchParams.get("b") ?? "";
@@ -53,7 +53,6 @@ export default function Home() {
         })();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFind = async () => {
@@ -65,11 +64,17 @@ export default function Home() {
 
     try {
       const mp = await api.getMidpoint(aText, bText);
-      setMidpoint(mp);
       const pl = await api.getPlaces(mp.lat, mp.lng);
+
+      track("midpoint_searched", {
+        locationA: aText,
+        locationB: bText,
+        placesCount: pl.length,
+      });
+
+      setMidpoint(mp);
       setPlaces(pl);
 
-      // Update URL for shareability and back-restore
       setSearchParams({ a: aText, b: bText }, { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
@@ -86,6 +91,8 @@ export default function Home() {
     }
     const shareUrl = url.toString();
 
+    track("midpoint_shared", { shareUrl });
+
     const message = midpoint
       ? `Meet in the middle with Midlo\n\nA: ${aText}\nB: ${bText}\nMidpoint: (${midpoint.lat.toFixed(
           4,
@@ -100,9 +107,7 @@ export default function Home() {
           url: shareUrl,
         });
         return;
-      } catch {
-        // fall through to clipboard
-      }
+      } catch {}
     }
 
     try {
@@ -124,7 +129,7 @@ export default function Home() {
         justifyContent: "center",
         backgroundColor: "var(--color-bg)",
         color: "var(--color-text)",
-        padding: "24px 16px",
+        padding: "var(--space-xl) var(--space-lg)",
       }}
     >
       <main
@@ -133,7 +138,7 @@ export default function Home() {
           maxWidth: 520,
           backgroundColor: "var(--color-surface)",
           borderRadius: "var(--radius-lg)",
-          padding: 24,
+          padding: "var(--space-xl)",
           border: "1px solid var(--color-divider)",
           boxShadow: "var(--shadow-card)",
         }}
@@ -141,7 +146,7 @@ export default function Home() {
         <OpenInAppBanner context="home" />
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ textAlign: "center", marginBottom: "var(--space-lg)" }}>
           <div
             style={{
               display: "flex",
@@ -154,7 +159,7 @@ export default function Home() {
               fontSize: "var(--font-size-caption)",
               letterSpacing: 0.5,
               textTransform: "uppercase",
-              marginBottom: 10,
+              marginBottom: "var(--space-sm)",
               width: "100%",
             }}
           >
@@ -167,22 +172,24 @@ export default function Home() {
             style={{
               width: 140,
               height: "auto",
-              marginBottom: 8,
+              marginBottom: "var(--space-sm)",
               objectFit: "contain",
               marginLeft: "auto",
               marginRight: "auto",
             }}
           />
+
           <h1
             style={{
               fontSize: "var(--font-size-heading)",
               color: "var(--color-primary-dark)",
               margin: 0,
-              marginBottom: 4,
+              marginBottom: "var(--space-xs)",
             }}
           >
             A fair place to meet, in seconds.
           </h1>
+
           <p
             style={{
               fontSize: "var(--font-size-body)",
@@ -196,24 +203,20 @@ export default function Home() {
         </div>
 
         {/* Inputs */}
-        <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "grid", gap: "var(--space-md)" }}>
           <div>
             <div
               style={{
                 fontSize: "var(--font-size-caption)",
                 color: "var(--color-text-secondary)",
-                marginBottom: 4,
+                marginBottom: "var(--space-xs)",
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
               }}
             >
               Location A
             </div>
-            <SearchBar
-              placeholder="Enter first location"
-              value={aText}
-              onChange={setAText}
-            />
+            <SearchBar placeholder="Enter first location" value={aText} onChange={setAText} />
           </div>
 
           <div>
@@ -221,40 +224,33 @@ export default function Home() {
               style={{
                 fontSize: "var(--font-size-caption)",
                 color: "var(--color-text-secondary)",
-                marginBottom: 4,
+                marginBottom: "var(--space-xs)",
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
               }}
             >
               Location B
             </div>
-            <SearchBar
-              placeholder="Enter second location"
-              value={bText}
-              onChange={setBText}
-            />
+            <SearchBar placeholder="Enter second location" value={bText} onChange={setBText} />
           </div>
 
-          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+          <div style={{ marginTop: "var(--space-sm)", display: "grid", gap: "var(--space-sm)" }}>
             <Button
               title={isLoading ? "Finding midpoint…" : "Find midpoint"}
               onClick={handleFind}
               disabled={isDisabled || isLoading}
             />
+
             {midpoint && (
-              <Button
-                title="Share link"
-                onClick={handleShare}
-                variant="secondary"
-              />
+              <Button title="Share link" onClick={handleShare} variant="secondary" />
             )}
           </div>
 
           {error && (
             <div
               style={{
-                marginTop: 8,
-                padding: 12,
+                marginTop: "var(--space-sm)",
+                padding: "var(--space-md)",
                 borderRadius: "var(--radius-md)",
                 border: "1px solid #ffb4b4",
                 backgroundColor: "#2a0f0f",
@@ -262,7 +258,23 @@ export default function Home() {
                 fontSize: "var(--font-size-caption)",
               }}
             >
-              {error}
+              <div style={{ marginBottom: "var(--space-xs)" }}>{error}</div>
+
+              <button
+                type="button"
+                onClick={handleFind}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: "var(--radius-pill)",
+                  border: "1px solid #ffb4b4",
+                  backgroundColor: "transparent",
+                  color: "#ffd2d2",
+                  cursor: "pointer",
+                  fontSize: "var(--font-size-caption)",
+                }}
+              >
+                Try again
+              </button>
             </div>
           )}
 
@@ -271,7 +283,7 @@ export default function Home() {
               fontSize: "var(--font-size-caption)",
               color: "var(--color-muted)",
               textAlign: "center",
-              marginTop: 4,
+              marginTop: "var(--space-xs)",
               marginBottom: 0,
             }}
           >
@@ -280,18 +292,14 @@ export default function Home() {
         </div>
 
         {/* Midpoint + map */}
-        <div style={{ marginTop: 20 }}>
-          <MapView
-            height={240}
-            hasMidpoint={Boolean(midpoint)}
-            placesCount={places.length}
-          />
+        <div style={{ marginTop: "var(--space-lg)" }}>
+          <MapView height={240} hasMidpoint={Boolean(midpoint)} placesCount={places.length} />
 
           {midpoint && (
             <div
               style={{
-                marginTop: 10,
-                padding: 10,
+                marginTop: "var(--space-sm)",
+                padding: "var(--space-sm)",
                 borderRadius: "var(--radius-md)",
                 backgroundColor: "var(--color-highlight)",
                 textAlign: "center",
@@ -310,7 +318,7 @@ export default function Home() {
                 style={{
                   fontSize: "var(--font-size-caption)",
                   color: "var(--color-text-secondary)",
-                  marginTop: 2,
+                  marginTop: "var(--space-xs)",
                 }}
               >
                 Lat {midpoint.lat.toFixed(4)} · Lng {midpoint.lng.toFixed(4)}
@@ -319,15 +327,50 @@ export default function Home() {
           )}
         </div>
 
+        {/* Skeletons */}
+        {isLoading && !places.length && (
+          <div style={{ marginTop: "var(--space-md)", display: "grid", gap: "var(--space-sm)" }}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "var(--space-md)",
+                  borderRadius: "var(--radius-md)",
+                  backgroundColor: "#E5E7EB",
+                  opacity: 0.6,
+                }}
+              >
+                <div
+                  style={{
+                    width: "60%",
+                    height: 14,
+                    borderRadius: 999,
+                    backgroundColor: "#CBD5F5",
+                    marginBottom: "var(--space-xs)",
+                  }}
+                />
+                <div
+                  style={{
+                    width: "40%",
+                    height: 10,
+                    borderRadius: 999,
+                    backgroundColor: "#D1D5DB",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Places */}
         {places.length > 0 && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: "var(--space-lg)" }}>
             <div
               style={{
                 fontSize: "var(--font-size-subheading)",
                 color: "var(--color-primary-dark)",
                 fontWeight: 500,
-                marginBottom: 4,
+                marginBottom: "var(--space-xs)",
               }}
             >
               Nearby options
@@ -336,19 +379,21 @@ export default function Home() {
               style={{
                 fontSize: "var(--font-size-caption)",
                 color: "var(--color-muted)",
-                marginBottom: 10,
+                marginBottom: "var(--space-sm)",
               }}
             >
               A few places that make meeting in the middle actually feel good.
             </div>
 
-            <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gap: "var(--space-sm)" }}>
               {places.map((p, idx) => (
                 <PlaceCard
                   key={p.placeId ?? String(idx)}
                   title={p.name}
                   distance={p.distance}
                   onClick={() => {
+                    track("place_opened", { placeId: p.placeId });
+
                     if (p.placeId) {
                       const url = new URL(window.location.href);
                       const a = aText || "";
@@ -369,7 +414,7 @@ export default function Home() {
         {!midpoint && !places.length && !isLoading && (
           <div
             style={{
-              marginTop: 16,
+              marginTop: "var(--space-md)",
               fontSize: "var(--font-size-caption)",
               color: "var(--color-muted)",
               textAlign: "center",

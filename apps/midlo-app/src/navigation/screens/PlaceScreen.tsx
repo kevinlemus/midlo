@@ -1,4 +1,5 @@
 import React from 'react';
+import { track } from '../../services/analytics';
 import {
   SafeAreaView,
   View,
@@ -117,7 +118,10 @@ export default function PlaceScreen() {
 
             {details?.googleMapsUri ? (
               <Pressable
-                onPress={() => Linking.openURL(details.googleMapsUri!)}
+                onPress={() => {
+                  track('place_opened', { placeId });
+                  Linking.openURL(details.googleMapsUri!);
+                }}
                 style={{
                   paddingVertical: 8,
                   paddingHorizontal: 10,
@@ -446,11 +450,20 @@ export default function PlaceScreen() {
                         <>
                           <MidloButton
                             title="Get directions"
-                            onPress={() => Linking.openURL(defaultUrl)}
+                            onPress={() => {
+                              track('directions_clicked', { placeId });
+                              Linking.openURL(defaultUrl);
+                            }}
                           />
 
                           <Pressable
-                            onPress={() => Linking.openURL(links.google)}
+                            onPress={() => {
+                              track('directions_clicked', {
+                                placeId,
+                                provider: 'google',
+                              });
+                              Linking.openURL(links.google);
+                            }}
                             style={{
                               paddingVertical: 6,
                               paddingHorizontal: 10,
@@ -470,7 +483,13 @@ export default function PlaceScreen() {
                           </Pressable>
 
                           <Pressable
-                            onPress={() => Linking.openURL(links.apple)}
+                            onPress={() => {
+                              track('directions_clicked', {
+                                placeId,
+                                provider: 'apple',
+                              });
+                              Linking.openURL(links.apple);
+                            }}
                             style={{
                               paddingVertical: 6,
                               paddingHorizontal: 10,
@@ -490,7 +509,13 @@ export default function PlaceScreen() {
                           </Pressable>
 
                           <Pressable
-                            onPress={() => Linking.openURL(links.waze)}
+                            onPress={() => {
+                              track('directions_clicked', {
+                                placeId,
+                                provider: 'waze',
+                              });
+                              Linking.openURL(links.waze);
+                            }}
                             style={{
                               paddingVertical: 6,
                               paddingHorizontal: 10,
@@ -515,7 +540,10 @@ export default function PlaceScreen() {
                 ) : details.googleMapsUri ? (
                   <MidloButton
                     title="Get directions"
-                    onPress={() => Linking.openURL(details.googleMapsUri!)}
+                    onPress={() => {
+                      track('directions_clicked', { placeId, provider: 'google_uri' });
+                      Linking.openURL(details.googleMapsUri!);
+                    }}
                   />
                 ) : null}
               </View>

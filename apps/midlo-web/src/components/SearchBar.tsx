@@ -11,10 +11,13 @@ type Props = {
 
 export default function SearchBar({ placeholder = "Search", value = "", onChange }: Props) {
   const [suggestions, setSuggestions] = React.useState<AutocompleteSuggestion[]>([]);
-  const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [highlight, setHighlight] = React.useState<number | null>(null);
+
+  // NEW: control dropdown visibility correctly
+  const [isFocused, setIsFocused] = React.useState(false);
+  const [isTyping, setIsTyping] = React.useState(false);
 
   const ref = React.useRef<HTMLDivElement | null>(null);
   const debounce = React.useRef<number | null>(null);
@@ -24,35 +27,24 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
 
   const query = value.trim();
 
+  // NEW: Only fetch suggestions when typing AND focused
   React.useEffect(() => {
-    if (blurTimerRef.current) {
-      window.clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = null;
-    }
-
-    if (committedValueRef.current && query === committedValueRef.current) {
-      abortRef.current?.abort();
-      abortRef.current = null;
-      setLoading(false);
-      setError(null);
+    if (!isFocused || !isTyping) {
       setSuggestions([]);
-      setOpen(false);
+      setError(null);
+      setLoading(false);
       return;
     }
 
     if (!query || query.length < 3) {
       abortRef.current?.abort();
-      abortRef.current = null;
-      setLoading(false);
-      setError(null);
       setSuggestions([]);
-      setOpen(false);
+      setError(null);
+      setLoading(false);
       return;
     }
 
-    if (debounce.current) {
-      window.clearTimeout(debounce.current);
-    }
+    if (debounce.current) window.clearTimeout(debounce.current);
 
     setLoading(true);
     setError(null);
@@ -65,23 +57,20 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
       try {
         const results = await api.autocomplete(query, controller.signal);
         setSuggestions(results);
-        setOpen(true);
-        setHighlight(null);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
-        console.error("Autocomplete error:", err);
         setError(err instanceof Error ? err.message : "Failed to load suggestions");
         setSuggestions([]);
-        setOpen(true);
       } finally {
         setLoading(false);
+        setHighlight(null);
       }
     }, 250);
 
     return () => {
       if (debounce.current) window.clearTimeout(debounce.current);
     };
-  }, [query]);
+  }, [query, isFocused, isTyping]);
 
   React.useEffect(() => {
     return () => {
@@ -95,7 +84,8 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
     function handleClick(e: MouseEvent) {
       if (!ref.current) return;
       if (!ref.current.contains(e.target as Node)) {
-        setOpen(false);
+        setIsFocused(false);
+        setIsTyping(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -105,18 +95,19 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
   const select = (s: AutocompleteSuggestion) => {
     const text = (s.description ?? "").trim();
     committedValueRef.current = text;
+
     abortRef.current?.abort();
     abortRef.current = null;
 
     onChange?.(text);
-    setOpen(false);
-    setError(null);
+    setIsTyping(false);
     setSuggestions([]);
+    setError(null);
     setHighlight(null);
   };
 
   const handleKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || suggestions.length === 0) return;
+    if (!shouldShowDropdown) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -134,9 +125,16 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
         select(suggestions[highlight]);
       }
     } else if (e.key === "Escape") {
-      setOpen(false);
+      setIsTyping(false);
     }
   };
+
+  // NEW: Correct dropdown visibility logic
+  const shouldShowDropdown =
+    isFocused &&
+    isTyping &&
+    !loading &&
+    suggestions.length > 0;
 
   return (
     <div
@@ -144,7 +142,7 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
       style={{
         position: "relative",
         width: "100%",
-        zIndex: open ? 5000 : 1,
+        zIndex: shouldShowDropdown ? 5000 : 1,
       }}
     >
       <input
@@ -152,20 +150,23 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
         value={value}
         onChange={(e) => {
           const next = e.target.value;
+
           if (committedValueRef.current && next.trim() !== committedValueRef.current) {
             committedValueRef.current = null;
           }
-          setOpen(true);
+
+          setIsTyping(true);
           onChange?.(next);
         }}
         onFocus={() => {
-          const shouldOpen =
-            query.length >= 3 &&
-            (!committedValueRef.current || query !== committedValueRef.current);
-          if (shouldOpen) setOpen(true);
+          setIsFocused(true);
+          // Do NOT open dropdown unless typing
         }}
         onBlur={() => {
-          blurTimerRef.current = window.setTimeout(() => setOpen(false), 150);
+          blurTimerRef.current = window.setTimeout(() => {
+            setIsFocused(false);
+            setIsTyping(false);
+          }, 150);
         }}
         onKeyDown={handleKey}
         autoCapitalize="none"
@@ -181,7 +182,7 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
         }}
       />
 
-      {loading && (
+      {loading && isTyping && (
         <div
           style={{
             position: "absolute",
@@ -196,7 +197,7 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
         </div>
       )}
 
-      {open && (loading || error || suggestions.length > 0) && (
+      {shouldShowDropdown && (
         <div
           style={{
             position: "absolute",
@@ -213,18 +214,6 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
             overflowY: "auto",
           }}
         >
-          {error ? (
-            <div
-              style={{
-                padding: "10px 12px",
-                fontSize: "var(--font-size-caption)",
-                color: "var(--color-danger)",
-              }}
-            >
-              {error}
-            </div>
-          ) : null}
-
           {suggestions.map((s, i) => {
             const active = highlight === i;
             return (
@@ -247,28 +236,6 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
               </div>
             );
           })}
-
-          {loading && suggestions.length === 0 ? (
-            <div
-              style={{
-                padding: "10px 12px",
-                fontSize: "var(--font-size-caption)",
-                color: "var(--color-muted)",
-              }}
-            >
-              Searching…
-            </div>
-          ) : !loading && !error && suggestions.length === 0 ? (
-            <div
-              style={{
-                padding: "10px 12px",
-                fontSize: "var(--font-size-caption)",
-                color: "var(--color-muted)",
-              }}
-            >
-              No matches. Try adding a street or city.
-            </div>
-          ) : null}
 
           <div
             style={{

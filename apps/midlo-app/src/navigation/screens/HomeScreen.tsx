@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { track } from '../../services/analytics';
 import {
   Text,
   SafeAreaView,
@@ -40,6 +41,14 @@ export default function HomeScreen() {
     try {
       const midpoint = await api.getMidpoint(locationA, locationB);
       const places = await api.getPlaces(midpoint.lat, midpoint.lng);
+
+      // ✅ Minimal analytics addition
+      track('midpoint_searched', {
+        locationA,
+        locationB,
+        placesCount: places.length,
+      });
+
       navigation.navigate('Results', {
         midpoint,
         places,

@@ -33,6 +33,7 @@ export default function Button({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      className="midlo-button"
       style={{
         width: "100%",
         padding: "12px 16px",
@@ -44,19 +45,8 @@ export default function Button({
         fontSize: "var(--font-size-body)",
         fontWeight: 500,
         boxShadow,
-        transition:
-          "transform 0.08s ease-out, box-shadow 0.08s ease-out, background-color 0.12s ease-out, opacity 0.12s ease-out",
         opacity: disabled ? 0.7 : 1,
         textAlign: "center",
-      }}
-      onMouseDown={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.97)";
-      }}
-      onMouseUp={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
       }}
     >
       {title}

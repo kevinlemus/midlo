@@ -216,6 +216,78 @@ export default function PlaceDetailsPage() {
     );
   };
 
+  const renderContact = () => {
+    if (!details) return null;
+
+    const hasWebsite = Boolean(details.websiteUri);
+    const hasPhone = Boolean(details.internationalPhoneNumber);
+
+    if (!hasWebsite && !hasPhone) return null;
+
+    return (
+      <div
+        style={{
+          marginTop: 16,
+          padding: 16,
+          borderRadius: "var(--radius-lg)",
+          border: "1px solid var(--color-divider)",
+          backgroundColor: "var(--color-surface)",
+        }}
+      >
+        <div
+          style={{
+            fontWeight: 600,
+            color: "var(--color-primary-dark)",
+            marginBottom: 8,
+            fontSize: "var(--font-size-subheading)",
+          }}
+        >
+          Contact
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {hasWebsite && (
+            <button
+              type="button"
+              onClick={() => window.open(details.websiteUri!, "_blank")}
+              style={{
+                padding: "10px 14px",
+                borderRadius: "var(--radius-pill)",
+                border: "1px solid var(--color-primary)",
+                backgroundColor: "var(--color-surface)",
+                color: "var(--color-primary-dark)",
+                cursor: "pointer",
+                fontSize: "var(--font-size-body)",
+                fontWeight: 500,
+              }}
+            >
+              Visit website
+            </button>
+          )}
+
+          {hasPhone && (
+            <button
+              type="button"
+              onClick={() => (window.location.href = `tel:${details.internationalPhoneNumber}`)}
+              style={{
+                padding: "10px 14px",
+                borderRadius: "var(--radius-pill)",
+                border: "1px solid var(--color-primary)",
+                backgroundColor: "var(--color-surface)",
+                color: "var(--color-primary-dark)",
+                cursor: "pointer",
+                fontSize: "var(--font-size-body)",
+                fontWeight: 500,
+              }}
+            >
+              Call {details.internationalPhoneNumber}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -498,6 +570,8 @@ export default function PlaceDetailsPage() {
                 </div>
               </div>
             ) : null}
+
+            {renderContact()}
 
             {renderDirections()}
           </>
