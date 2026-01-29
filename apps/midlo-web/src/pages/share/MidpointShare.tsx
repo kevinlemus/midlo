@@ -1,0 +1,43 @@
+// src/pages/share/MidpointShare.tsx
+import React, { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+
+export default function MidpointShare() {
+  const [params] = useSearchParams();
+  const a = params.get("a") ?? "";
+  const b = params.get("b") ?? "";
+
+  const title = `Meet in the middle • Midlo`;
+  const description = a && b
+    ? `A fair place to meet between ${a} and ${b}.`
+    : `Find a friendly halfway point that feels fair to both sides.`;
+
+  const image = "/og/midpoint.png";
+
+  useEffect(() => {
+    const target = `/?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
+    window.location.replace(target);
+  }, [a, b]);
+
+  return (
+    <html>
+      <head>
+        <title>{title}</title>
+
+        {/* Open Graph */}
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:image" content={image} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={image} />
+      </head>
+      <body />
+    </html>
+  );
+}
