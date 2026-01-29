@@ -20,7 +20,6 @@ import MidloButton from '../../components/MidloButton';
 import { mapsLinks, mapsLinksWithPlaceId } from '../../utils/maps';
 
 import Logo from '../../assets/images/midlo_logo.png';
-import MidpointPin from '../../assets/images/midpoint_pin.png';
 
 type MapRoute = RouteProp<RootStackParamList, 'Map'>;
 
@@ -38,10 +37,30 @@ export default function MapScreen() {
 
   const mapRef = React.useRef<MapView | null>(null);
 
-  const midpointMarkerImage = React.useMemo(() => {
-    const resolved = Image.resolveAssetSource(MidpointPin);
-    return resolved?.uri ? { uri: resolved.uri } : (MidpointPin as unknown as number);
-  }, []);
+  // ⭐ Custom midpoint pin (Expo-safe, no PNG required)
+  const midpointPin = (
+    <View
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: theme.colors.primary,
+        borderWidth: 3,
+        borderColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      <View
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: 'white',
+        }}
+      />
+    </View>
+  );
 
   React.useEffect(() => {
     if (!mapRef.current) return;
@@ -135,14 +154,15 @@ export default function MapScreen() {
                 longitudeDelta: 0.05,
               }}
             >
-              {/* Midpoint pin (custom) */}
+              {/* ⭐ Midpoint pin (custom view) */}
               <Marker
                 coordinate={{ latitude: midpoint.lat, longitude: midpoint.lng }}
                 title="Midpoint"
-                image={midpointMarkerImage}
-              />
+              >
+                {midpointPin}
+              </Marker>
 
-              {/* Place pins */}
+              {/* ⭐ Place pins (default markers) */}
               {places.map((p) => (
                 <Marker
                   key={p.placeId}

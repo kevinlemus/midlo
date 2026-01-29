@@ -58,9 +58,16 @@ export default function PlaceDetailsPage() {
   const extraPhotos = photos.slice(1, 6);
 
   const lat =
-    details?.lat ?? (details as any)?.location?.latitude ?? (details as any)?.location?.lat ?? null;
+    details?.lat ??
+    (details as any)?.location?.latitude ??
+    (details as any)?.location?.lat ??
+    null;
+
   const lng =
-    details?.lng ?? (details as any)?.location?.longitude ?? (details as any)?.location?.lng ?? null;
+    details?.lng ??
+    (details as any)?.location?.longitude ??
+    (details as any)?.location?.lng ??
+    null;
 
   const hasLatLng = typeof lat === "number" && typeof lng === "number";
 
@@ -99,9 +106,7 @@ export default function PlaceDetailsPage() {
           url: url.toString(),
         });
         return;
-      } catch {
-        // fall through
-      }
+      } catch {}
     }
 
     try {
@@ -112,200 +117,37 @@ export default function PlaceDetailsPage() {
     }
   };
 
-  const renderDirections = () => {
-    if (!hasLatLng) return null;
-
-    const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const defaultUrl = isIOS ? links.apple : links.google;
-
-    return (
-      <div
-        style={{
-          marginTop: 16,
-          padding: 16,
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-divider)",
-          backgroundColor: "var(--color-surface)",
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 600,
-            color: "var(--color-primary-dark)",
-            marginBottom: 8,
-            fontSize: "var(--font-size-subheading)",
-          }}
-        >
-          Directions
-        </div>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 8,
-            alignItems: "center",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => window.open(defaultUrl, "_blank")}
-            style={{
-              padding: "10px 14px",
-              borderRadius: "var(--radius-pill)",
-              border: "1px solid var(--color-primary)",
-              backgroundColor: "var(--color-bright)",
-              color: "var(--color-surface)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-body)",
-              fontWeight: 500,
-            }}
-          >
-            Get directions
-          </button>
-
-          <button
-            type="button"
-            onClick={() => window.open(links.google, "_blank")}
-            style={{
-              padding: "6px 10px",
-              borderRadius: "var(--radius-pill)",
-              border: "1px solid var(--color-accent)",
-              backgroundColor: "var(--color-surface)",
-              color: "var(--color-primary-dark)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-caption)",
-            }}
-          >
-            Google Maps
-          </button>
-
-          <button
-            type="button"
-            onClick={() => window.open(links.apple, "_blank")}
-            style={{
-              padding: "6px 10px",
-              borderRadius: "var(--radius-pill)",
-              border: "1px solid var(--color-accent)",
-              backgroundColor: "var(--color-surface)",
-              color: "var(--color-primary-dark)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-caption)",
-            }}
-          >
-            Apple Maps
-          </button>
-
-          <button
-            type="button"
-            onClick={() => window.open(links.waze, "_blank")}
-            style={{
-              padding: "6px 10px",
-              borderRadius: "var(--radius-pill)",
-              border: "1px solid var(--color-accent)",
-              backgroundColor: "var(--color-surface)",
-              color: "var(--color-primary-dark)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-caption)",
-            }}
-          >
-            Waze
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderContact = () => {
-    if (!details) return null;
-
-    const hasWebsite = Boolean(details.websiteUri);
-    const hasPhone = Boolean(details.internationalPhoneNumber);
-
-    if (!hasWebsite && !hasPhone) return null;
-
-    return (
-      <div
-        style={{
-          marginTop: 16,
-          padding: 16,
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-divider)",
-          backgroundColor: "var(--color-surface)",
-        }}
-      >
-        <div
-          style={{
-            fontWeight: 600,
-            color: "var(--color-primary-dark)",
-            marginBottom: 8,
-            fontSize: "var(--font-size-subheading)",
-          }}
-        >
-          Contact
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {hasWebsite && (
-            <button
-              type="button"
-              onClick={() => window.open(details.websiteUri!, "_blank")}
-              style={{
-                padding: "10px 14px",
-                borderRadius: "var(--radius-pill)",
-                border: "1px solid var(--color-primary)",
-                backgroundColor: "var(--color-surface)",
-                color: "var(--color-primary-dark)",
-                cursor: "pointer",
-                fontSize: "var(--font-size-body)",
-                fontWeight: 500,
-              }}
-            >
-              Visit website
-            </button>
-          )}
-
-          {hasPhone && (
-            <button
-              type="button"
-              onClick={() => (window.location.href = `tel:${details.internationalPhoneNumber}`)}
-              style={{
-                padding: "10px 14px",
-                borderRadius: "var(--radius-pill)",
-                border: "1px solid var(--color-primary)",
-                backgroundColor: "var(--color-surface)",
-                color: "var(--color-primary-dark)",
-                cursor: "pointer",
-                fontSize: "var(--font-size-body)",
-                fontWeight: 500,
-              }}
-            >
-              Call {details.internationalPhoneNumber}
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div
       style={{
         minHeight: "100vh",
         backgroundColor: "var(--color-bg)",
         color: "var(--color-text)",
-        padding: 24,
+        padding: "var(--space-lg)",
+        boxSizing: "border-box",
+
+        display: "flex",
+        justifyContent: "center",
       }}
     >
-      <div style={{ maxWidth: 980, margin: "0 auto" }}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 520,
+          margin: "0 auto",
+          boxSizing: "border-box",
+        }}
+      >
         <OpenInAppBanner context="place" />
 
+        {/* Header */}
         <div
           style={{
             display: "flex",
+            flexWrap: "wrap",
             justifyContent: "space-between",
-            gap: 8,
-            marginBottom: 12,
+            gap: "var(--space-sm)",
+            marginBottom: "var(--space-md)",
           }}
         >
           <button
@@ -341,11 +183,12 @@ export default function PlaceDetailsPage() {
           </button>
         </div>
 
+        {/* Loading */}
         {loading && (
           <div
             style={{
-              marginTop: 18,
-              padding: 16,
+              marginTop: "var(--space-lg)",
+              padding: "var(--space-lg)",
               borderRadius: "var(--radius-lg)",
               border: "1px solid var(--color-divider)",
               backgroundColor: "var(--color-surface)",
@@ -357,11 +200,12 @@ export default function PlaceDetailsPage() {
           </div>
         )}
 
+        {/* Error */}
         {error && (
           <div
             style={{
-              marginTop: 18,
-              padding: 16,
+              marginTop: "var(--space-lg)",
+              padding: "var(--space-lg)",
               borderRadius: "var(--radius-lg)",
               border: "1px solid #fca5a5",
               backgroundColor: "#fef2f2",
@@ -373,9 +217,11 @@ export default function PlaceDetailsPage() {
           </div>
         )}
 
+        {/* Content */}
         {!loading && !error && details && (
           <>
-            <div style={{ marginTop: 18 }}>
+            {/* Title */}
+            <div style={{ marginTop: "var(--space-lg)" }}>
               <h1
                 style={{
                   margin: 0,
@@ -385,10 +231,11 @@ export default function PlaceDetailsPage() {
               >
                 {details.name ?? "Place"}
               </h1>
+
               {details.formattedAddress && (
                 <div
                   style={{
-                    marginTop: 6,
+                    marginTop: "var(--space-xs)",
                     color: "var(--color-text-secondary)",
                     fontSize: "var(--font-size-body)",
                   }}
@@ -396,81 +243,13 @@ export default function PlaceDetailsPage() {
                   {details.formattedAddress}
                 </div>
               )}
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  marginTop: 10,
-                }}
-              >
-                {typeof details.rating === "number" && (
-                  <div
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: "1px solid var(--color-divider)",
-                      backgroundColor: "rgba(255,255,255,0.7)",
-                      fontSize: "var(--font-size-caption)",
-                    }}
-                  >
-                    {details.rating.toFixed(1)} ★
-                    {typeof details.userRatingCount === "number"
-                      ? ` (${details.userRatingCount})`
-                      : ""}
-                  </div>
-                )}
-
-                {typeof details.openNow === "boolean" && (
-                  <div
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: "1px solid var(--color-divider)",
-                      backgroundColor: details.openNow
-                        ? "rgba(16,185,129,0.14)"
-                        : "rgba(239,68,68,0.14)",
-                      fontSize: "var(--font-size-caption)",
-                    }}
-                  >
-                    {details.openNow ? "Open now" : "Closed"}
-                  </div>
-                )}
-
-                {formatPrice(priceLevel) && (
-                  <div
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: "1px solid var(--color-divider)",
-                      fontSize: "var(--font-size-caption)",
-                    }}
-                  >
-                    {formatPrice(priceLevel)}
-                  </div>
-                )}
-
-                {formatType(primaryType) && (
-                  <div
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: "1px solid var(--color-divider)",
-                      fontSize: "var(--font-size-caption)",
-                    }}
-                  >
-                    {formatType(primaryType)}
-                  </div>
-                )}
-              </div>
             </div>
 
+            {/* Hero Image */}
             {hero && (
               <div
                 style={{
-                  marginTop: 16,
+                  marginTop: "var(--space-lg)",
                   borderRadius: "var(--radius-lg)",
                   overflow: "hidden",
                   border: "1px solid var(--color-divider)",
@@ -483,7 +262,8 @@ export default function PlaceDetailsPage() {
                   alt={details.name ?? "Place photo"}
                   style={{
                     width: "100%",
-                    height: 380,
+                    height: "auto",
+                    maxHeight: 380,
                     objectFit: "cover",
                     display: "block",
                   }}
@@ -491,14 +271,15 @@ export default function PlaceDetailsPage() {
               </div>
             )}
 
+            {/* Thumbnails */}
             {extraPhotos.length > 0 && (
               <div
                 style={{
-                  marginTop: 12,
+                  marginTop: "var(--space-md)",
                   display: "flex",
-                  gap: 8,
+                  gap: "var(--space-sm)",
                   overflowX: "auto",
-                  paddingBottom: 4,
+                  paddingBottom: "var(--space-xs)",
                 }}
               >
                 {extraPhotos.map((p) => (
@@ -536,11 +317,12 @@ export default function PlaceDetailsPage() {
               </div>
             )}
 
+            {/* Hours */}
             {details.weekdayDescriptions?.length ? (
               <div
                 style={{
-                  marginTop: 16,
-                  padding: 16,
+                  marginTop: "var(--space-lg)",
+                  padding: "var(--space-lg)",
                   borderRadius: "var(--radius-lg)",
                   border: "1px solid var(--color-divider)",
                   backgroundColor: "var(--color-surface)",
@@ -550,16 +332,17 @@ export default function PlaceDetailsPage() {
                   style={{
                     fontWeight: 600,
                     color: "var(--color-primary-dark)",
-                    marginBottom: 8,
+                    marginBottom: "var(--space-sm)",
                     fontSize: "var(--font-size-subheading)",
                   }}
                 >
                   Hours
                 </div>
+
                 <div
                   style={{
                     display: "grid",
-                    gap: 6,
+                    gap: "var(--space-xs)",
                     color: "var(--color-text-secondary)",
                     fontSize: "var(--font-size-body)",
                   }}
@@ -571,9 +354,194 @@ export default function PlaceDetailsPage() {
               </div>
             ) : null}
 
-            {renderContact()}
+            {/* Contact */}
+            {(details.websiteUri || details.internationalPhoneNumber) && (
+              <div
+                style={{
+                  marginTop: "var(--space-lg)",
+                  padding: "var(--space-lg)",
+                  borderRadius: "var(--radius-lg)",
+                  border: "1px solid var(--color-divider)",
+                  backgroundColor: "var(--color-surface)",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: "var(--color-primary-dark)",
+                    marginBottom: "var(--space-sm)",
+                    fontSize: "var(--font-size-subheading)",
+                  }}
+                >
+                  Contact
+                </div>
 
-            {renderDirections()}
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                  {details.websiteUri && (
+                    <button
+                      type="button"
+                      onClick={() => window.open(details.websiteUri!, "_blank")}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-primary)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
+                        cursor: "pointer",
+                        fontSize: "var(--font-size-body)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Visit website
+                    </button>
+                  )}
+
+                  {details.internationalPhoneNumber && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        (window.location.href = `tel:${details.internationalPhoneNumber}`)
+                      }
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-primary)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
+                        cursor: "pointer",
+                        fontSize: "var(--font-size-body)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Call {details.internationalPhoneNumber}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Directions */}
+            {hasLatLng && (
+              <div
+                style={{
+                  marginTop: "var(--space-lg)",
+                  padding: "var(--space-lg)",
+                  borderRadius: "var(--radius-lg)",
+                  border: "1px solid var(--color-divider)",
+                  backgroundColor: "var(--color-surface)",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 600,
+                    color: "var(--color-primary-dark)",
+                    marginBottom: "var(--space-sm)",
+                    fontSize: "var(--font-size-subheading)",
+                  }}
+                >
+                  Directions
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-sm)",
+                  }}
+                >
+                  {/* ⭐ FULL-WIDTH BUTTON */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
+                      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                      const defaultUrl = isIOS ? links.apple : links.google;
+                      window.open(defaultUrl, "_blank");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "14px 16px",
+                      borderRadius: "var(--radius-pill)",
+                      border: "1px solid var(--color-primary)",
+                      backgroundColor: "var(--color-bright)",
+                      color: "var(--color-surface)",
+                      cursor: "pointer",
+                      fontSize: "var(--font-size-body)",
+                      fontWeight: 600,
+                      textAlign: "center",
+                    }}
+                  >
+                    Get directions
+                  </button>
+
+                  {/* Provider buttons */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "var(--space-sm)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
+                        window.open(links.google, "_blank");
+                      }}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-accent)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
+                        cursor: "pointer",
+                        fontSize: "var(--font-size-caption)",
+                      }}
+                    >
+                      Google Maps
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
+                        window.open(links.apple, "_blank");
+                      }}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-accent)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
+                        cursor: "pointer",
+                        fontSize: "var(--font-size-caption)",
+                      }}
+                    >
+                      Apple Maps
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
+                        window.open(links.waze, "_blank");
+                      }}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-accent)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
+                        cursor: "pointer",
+                        fontSize: "var(--font-size-caption)",
+                      }}
+                    >
+                      Waze
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

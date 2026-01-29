@@ -126,7 +126,10 @@ export default function Home() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
+
+        // ⭐ FIX: keep card scrollable, do NOT vertically center
+        justifyContent: "flex-start",
+
         backgroundColor: "var(--color-bg)",
         color: "var(--color-text)",
         padding: "var(--space-xl) var(--space-lg)",
@@ -149,7 +152,7 @@ export default function Home() {
         <div style={{ textAlign: "center", marginBottom: "var(--space-lg)" }}>
           <div
             style={{
-              display: "flex",
+              display: "inline-flex", // ⭐ FIX: chip no longer full width
               justifyContent: "center",
               alignItems: "center",
               padding: "4px 12px",
@@ -160,7 +163,6 @@ export default function Home() {
               letterSpacing: 0.5,
               textTransform: "uppercase",
               marginBottom: "var(--space-sm)",
-              width: "100%",
             }}
           >
             Meet in the middle
