@@ -1,5 +1,10 @@
 import type { Midpoint, Place, PlaceDetails } from "../types";
 
+export type AutocompleteSuggestion = {
+  placeId: string;
+  description: string;
+};
+
 function apiBaseUrl() {
   const env = (import.meta as any).env;
   const v = env?.VITE_API_BASE_URL as string | undefined;
@@ -26,8 +31,8 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
-async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`);
+async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, { signal });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API error ${res.status}: ${text || res.statusText}`);
@@ -36,12 +41,17 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export const api = {
-  autocomplete: async (input: string): Promise<string[]> => {
+  autocomplete: async (input: string, signal?: AbortSignal): Promise<AutocompleteSuggestion[]> => {
     if (!input || input.trim().length < 3) return [];
-    const suggestions = await getJson<Array<{ description: string }>>(
+    const suggestions = await getJson<AutocompleteSuggestion[]>(
       `/autocomplete?input=${encodeURIComponent(input)}`,
+      signal,
     );
-    return suggestions.map((s) => s.description).filter(Boolean);
+
+    // Hardening: backend should return these, but keep UI stable.
+    return Array.isArray(suggestions)
+      ? suggestions.filter((s) => Boolean(s?.description))
+      : [];
   },
 
   getMidpoint: (addressA: string, addressB: string) =>
