@@ -71,24 +71,7 @@ export default function PlaceDetailsPage() {
 
   const hasLatLng = typeof lat === "number" && typeof lng === "number";
 
-  const priceLevel = (details as any)?.priceLevel as number | undefined;
-  const primaryType =
-    (details as any)?.primaryType ??
-    (Array.isArray((details as any)?.types) ? (details as any).types[0] : undefined);
-
-  const formatPrice = (level?: number) => {
-    if (typeof level !== "number") return null;
-    return "$".repeat(Math.min(Math.max(level, 1), 4));
-  };
-
-  const formatType = (t?: string) => {
-    if (!t) return null;
-    return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  };
-
-  const handleBack = () => {
-    navigate(-1);
-  };
+  const handleBack = () => navigate(-1);
 
   const handleShare = async () => {
     const url = new URL(window.location.href);
@@ -127,6 +110,10 @@ export default function PlaceDetailsPage() {
         boxSizing: "border-box",
         display: "flex",
         justifyContent: "center",
+
+        // ⭐ Prevent Safari zoom from overflow
+        overflowX: "hidden",
+        width: "100%",
       }}
     >
       <div
@@ -226,7 +213,7 @@ export default function PlaceDetailsPage() {
               )}
             </div>
 
-            {/* ⭐ Full-width Share button */}
+            {/* Full-width Share button */}
             <button
               type="button"
               onClick={handleShare}
@@ -469,12 +456,13 @@ export default function PlaceDetailsPage() {
                     Get directions
                   </button>
 
-                  {/* Provider grid */}
+                  {/* Provider grid — overflow-safe */}
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(0, 1fr))",
                       gap: "var(--space-sm)",
+                      width: "100%",
                     }}
                   >
                     <button
@@ -492,6 +480,7 @@ export default function PlaceDetailsPage() {
                         cursor: "pointer",
                         fontSize: "var(--font-size-caption)",
                         fontWeight: 500,
+                        width: "100%",
                       }}
                     >
                       Google
@@ -512,6 +501,7 @@ export default function PlaceDetailsPage() {
                         cursor: "pointer",
                         fontSize: "var(--font-size-caption)",
                         fontWeight: 500,
+                        width: "100%",
                       }}
                     >
                       Apple
@@ -532,6 +522,7 @@ export default function PlaceDetailsPage() {
                         cursor: "pointer",
                         fontSize: "var(--font-size-caption)",
                         fontWeight: 500,
+                        width: "100%",
                       }}
                     >
                       Waze
