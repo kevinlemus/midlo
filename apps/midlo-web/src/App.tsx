@@ -1,8 +1,9 @@
-import React from 'react';
-import './styles/theme.css';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import Home from './pages/Home';
-import PlaceDetailsPage from './pages/PlaceDetails';
+import React from "react";
+import "./styles/theme.css";
+import "./styles/globals.css";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import Home from "./pages/Home";
+import PlaceDetailsPage from "./pages/PlaceDetails";
 
 export default function App() {
   return (

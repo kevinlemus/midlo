@@ -1,7 +1,7 @@
-import React from 'react';
-import '../styles/theme.css';
+import React from "react";
+import "../styles/theme.css";
 
-type Variant = 'primary' | 'secondary';
+type Variant = "primary" | "secondary";
 
 type Props = {
   title?: string;
@@ -11,47 +11,52 @@ type Props = {
 };
 
 export default function Button({
-  title = 'Button',
+  title = "Button",
   onClick,
   disabled,
-  variant = 'primary',
+  variant = "primary",
 }: Props) {
-  const isPrimary = variant === 'primary';
+  const isPrimary = variant === "primary";
 
   const backgroundColor = disabled
-    ? 'var(--color-muted)'
+    ? "var(--color-muted)"
     : isPrimary
-    ? 'var(--color-bright)'
-    : 'var(--color-surface)';
+    ? "var(--color-bright)"
+    : "var(--color-surface)";
 
-  const borderColor = isPrimary ? 'transparent' : 'var(--color-accent)';
-  const textColor = isPrimary ? 'var(--color-surface)' : 'var(--color-primary-dark)';
-  const boxShadow = isPrimary && !disabled ? 'var(--shadow-card)' : 'none';
+  const borderColor = isPrimary ? "transparent" : "var(--color-accent)";
+  const textColor = isPrimary ? "var(--color-surface)" : "var(--color-primary-dark)";
+  const boxShadow = isPrimary && !disabled ? "var(--shadow-card)" : "none";
 
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: '10px 14px',
+        width: "100%",
+        padding: "12px 16px",
         backgroundColor,
         color: textColor,
         border: `1px solid ${borderColor}`,
-        borderRadius: 'var(--radius-pill)',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize: 'var(--font-size-body)',
+        borderRadius: "var(--radius-pill)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        fontSize: "var(--font-size-body)",
         fontWeight: 500,
         boxShadow,
-        transition: 'transform 0.08s ease-out, box-shadow 0.08s ease-out, background-color 0.12s ease-out',
+        transition:
+          "transform 0.08s ease-out, box-shadow 0.08s ease-out, background-color 0.12s ease-out, opacity 0.12s ease-out",
+        opacity: disabled ? 0.7 : 1,
+        textAlign: "center",
       }}
       onMouseDown={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.98)';
+        (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.97)";
       }}
       onMouseUp={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
       }}
     >
       {title}

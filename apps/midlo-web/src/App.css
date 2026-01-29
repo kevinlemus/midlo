@@ -1,4 +1,4 @@
-/* Minimal App styles */
-.container {
-  padding: 16px;
+/* Reserved for future app-wide layout if needed */
+.app-root {
+  width: 100%;
 }

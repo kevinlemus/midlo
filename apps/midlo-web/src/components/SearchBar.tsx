@@ -24,14 +24,12 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
 
   const query = value.trim();
 
-  // Fetch suggestions
   React.useEffect(() => {
     if (blurTimerRef.current) {
       window.clearTimeout(blurTimerRef.current);
       blurTimerRef.current = null;
     }
 
-    // After selecting a suggestion, keep the dropdown closed until the user edits.
     if (committedValueRef.current && query === committedValueRef.current) {
       abortRef.current?.abort();
       abortRef.current = null;
@@ -52,12 +50,12 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     if (debounce.current) {
       window.clearTimeout(debounce.current);
     }
+
+    setLoading(true);
+    setError(null);
 
     debounce.current = window.setTimeout(async () => {
       abortRef.current?.abort();
@@ -93,7 +91,6 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
     };
   }, []);
 
-  // Close on outside click
   React.useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (!ref.current) return;
@@ -123,10 +120,14 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlight((prev) => (prev === null ? 0 : Math.min(prev + 1, suggestions.length - 1)));
+      setHighlight((prev) =>
+        prev === null ? 0 : Math.min(prev + 1, suggestions.length - 1),
+      );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlight((prev) => (prev === null ? suggestions.length - 1 : Math.max(prev - 1, 0)));
+      setHighlight((prev) =>
+        prev === null ? suggestions.length - 1 : Math.max(prev - 1, 0),
+      );
     } else if (e.key === "Enter") {
       if (highlight !== null && suggestions[highlight]) {
         e.preventDefault();
@@ -140,7 +141,11 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
   return (
     <div
       ref={ref}
-      style={{ position: "relative", width: "100%", zIndex: open ? 5000 : 1 }}
+      style={{
+        position: "relative",
+        width: "100%",
+        zIndex: open ? 5000 : 1,
+      }}
     >
       <input
         placeholder={placeholder}
@@ -155,11 +160,11 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
         }}
         onFocus={() => {
           const shouldOpen =
-            query.length >= 3 && (!committedValueRef.current || query !== committedValueRef.current);
+            query.length >= 3 &&
+            (!committedValueRef.current || query !== committedValueRef.current);
           if (shouldOpen) setOpen(true);
         }}
         onBlur={() => {
-          // Give click-to-select a moment to run (like mobile's blur timer).
           blurTimerRef.current = window.setTimeout(() => setOpen(false), 150);
         }}
         onKeyDown={handleKey}
@@ -200,11 +205,11 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
             right: 0,
             marginTop: 4,
             zIndex: 5001,
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-accent)",
+            borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--color-divider)",
             backgroundColor: "var(--color-surface)",
             boxShadow: "var(--shadow-card)",
-            maxHeight: 240,
+            maxHeight: 260,
             overflowY: "auto",
           }}
         >
@@ -213,7 +218,7 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
               style={{
                 padding: "10px 12px",
                 fontSize: "var(--font-size-caption)",
-                color: "#b00020",
+                color: "var(--color-danger)",
               }}
             >
               {error}
@@ -235,6 +240,7 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
                   fontSize: "var(--font-size-body)",
                   backgroundColor: active ? "rgba(165,214,167,0.18)" : "transparent",
                   cursor: "pointer",
+                  borderBottom: "1px solid var(--color-divider)",
                 }}
               >
                 {s.description}
@@ -271,6 +277,7 @@ export default function SearchBar({ placeholder = "Search", value = "", onChange
               fontSize: "var(--font-size-caption)",
               color: "var(--color-muted)",
               backgroundColor: "var(--color-highlight)",
+              textAlign: "right",
             }}
           >
             Powered by Google
