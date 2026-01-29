@@ -7,17 +7,11 @@ export type AutocompleteSuggestion = {
 
 function apiBaseUrl() {
   const env = (import.meta as any).env;
-  const v = env?.VITE_API_BASE_URL as string | undefined;
-  if (v && v.trim()) return v.trim().replace(/\/$/, "");
-
-  // In local dev, call the API by relative path and let Vite proxy it.
-  if ((import.meta as any).env?.DEV) return "";
-
-  // In production, default to same-origin to avoid Mixed Content on HTTPS pages.
-  // If your API is hosted elsewhere, set `VITE_API_BASE_URL` at build time.
-  return typeof window !== "undefined"
-    ? window.location.origin.replace(/\/$/, "")
-    : "";
+  const v = env?.VITE_API_URL as string | undefined;
+  if (!v || !v.trim()) {
+    throw new Error("Missing VITE_API_URL");
+  }
+  return v.trim().replace(/\/$/, "");
 }
 
 const API_BASE_URL = apiBaseUrl();
@@ -71,13 +65,6 @@ export const api = {
 };
 
 export function placePhotoUrl(photoName: string, maxWidthPx = 1600) {
-  if (!API_BASE_URL) {
-    const url = new URL("/place-photo", window.location.origin);
-    url.searchParams.set("name", photoName);
-    url.searchParams.set("maxWidthPx", String(maxWidthPx));
-    return url.toString();
-  }
-
   const url = new URL("/place-photo", API_BASE_URL);
   url.searchParams.set("name", photoName);
   url.searchParams.set("maxWidthPx", String(maxWidthPx));
