@@ -125,7 +125,6 @@ export default function PlaceDetailsPage() {
         color: "var(--color-text)",
         padding: "var(--space-lg)",
         boxSizing: "border-box",
-
         display: "flex",
         justifyContent: "center",
       }}
@@ -144,9 +143,7 @@ export default function PlaceDetailsPage() {
         <div
           style={{
             display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            gap: "var(--space-sm)",
+            justifyContent: "flex-start",
             marginBottom: "var(--space-md)",
           }}
         >
@@ -154,32 +151,16 @@ export default function PlaceDetailsPage() {
             type="button"
             onClick={handleBack}
             style={{
-              padding: "8px 10px",
+              padding: "8px 12px",
               borderRadius: "var(--radius-md)",
               border: "1px solid var(--color-divider)",
               backgroundColor: "var(--color-surface)",
               color: "var(--color-text)",
               cursor: "pointer",
-              fontSize: "var(--font-size-caption)",
+              fontSize: "var(--font-size-body)",
             }}
           >
             ← Back
-          </button>
-
-          <button
-            type="button"
-            onClick={handleShare}
-            style={{
-              padding: "8px 10px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-accent)",
-              backgroundColor: "var(--color-surface)",
-              color: "var(--color-primary-dark)",
-              cursor: "pointer",
-              fontSize: "var(--font-size-caption)",
-            }}
-          >
-            Share
           </button>
         </div>
 
@@ -244,6 +225,26 @@ export default function PlaceDetailsPage() {
                 </div>
               )}
             </div>
+
+            {/* ⭐ Full-width Share button */}
+            <button
+              type="button"
+              onClick={handleShare}
+              style={{
+                width: "100%",
+                marginTop: "var(--space-md)",
+                padding: "14px 16px",
+                borderRadius: "var(--radius-pill)",
+                border: "1px solid var(--color-accent)",
+                backgroundColor: "var(--color-surface)",
+                color: "var(--color-primary-dark)",
+                cursor: "pointer",
+                fontSize: "var(--font-size-body)",
+                fontWeight: 600,
+              }}
+            >
+              Share this place
+            </button>
 
             {/* Hero Image */}
             {hero && (
@@ -442,14 +443,8 @@ export default function PlaceDetailsPage() {
                   Directions
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "var(--space-sm)",
-                  }}
-                >
-                  {/* ⭐ FULL-WIDTH BUTTON */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                  {/* Full-width CTA */}
                   <button
                     type="button"
                     onClick={() => {
@@ -474,11 +469,11 @@ export default function PlaceDetailsPage() {
                     Get directions
                   </button>
 
-                  {/* Provider buttons */}
+                  {/* Provider grid */}
                   <div
                     style={{
-                      display: "flex",
-                      flexWrap: "wrap",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, 1fr)",
                       gap: "var(--space-sm)",
                     }}
                   >
@@ -489,16 +484,17 @@ export default function PlaceDetailsPage() {
                         window.open(links.google, "_blank");
                       }}
                       style={{
-                        padding: "6px 10px",
+                        padding: "10px 12px",
                         borderRadius: "var(--radius-pill)",
                         border: "1px solid var(--color-accent)",
                         backgroundColor: "var(--color-surface)",
                         color: "var(--color-primary-dark)",
                         cursor: "pointer",
                         fontSize: "var(--font-size-caption)",
+                        fontWeight: 500,
                       }}
                     >
-                      Google Maps
+                      Google
                     </button>
 
                     <button
@@ -508,16 +504,17 @@ export default function PlaceDetailsPage() {
                         window.open(links.apple, "_blank");
                       }}
                       style={{
-                        padding: "6px 10px",
+                        padding: "10px 12px",
                         borderRadius: "var(--radius-pill)",
                         border: "1px solid var(--color-accent)",
                         backgroundColor: "var(--color-surface)",
                         color: "var(--color-primary-dark)",
                         cursor: "pointer",
                         fontSize: "var(--font-size-caption)",
+                        fontWeight: 500,
                       }}
                     >
-                      Apple Maps
+                      Apple
                     </button>
 
                     <button
@@ -527,13 +524,14 @@ export default function PlaceDetailsPage() {
                         window.open(links.waze, "_blank");
                       }}
                       style={{
-                        padding: "6px 10px",
+                        padding: "10px 12px",
                         borderRadius: "var(--radius-pill)",
                         border: "1px solid var(--color-accent)",
                         backgroundColor: "var(--color-surface)",
                         color: "var(--color-primary-dark)",
                         cursor: "pointer",
                         fontSize: "var(--font-size-caption)",
+                        fontWeight: 500,
                       }}
                     >
                       Waze
