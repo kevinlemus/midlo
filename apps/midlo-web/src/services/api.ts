@@ -13,9 +13,11 @@ function apiBaseUrl() {
   // In local dev, call the API by relative path and let Vite proxy it.
   if ((import.meta as any).env?.DEV) return "";
 
+  // In production, default to same-origin to avoid Mixed Content on HTTPS pages.
+  // If your API is hosted elsewhere, set `VITE_API_BASE_URL` at build time.
   return typeof window !== "undefined"
-    ? `http://${window.location.hostname}:8080`
-    : "http://localhost:8080";
+    ? window.location.origin.replace(/\/$/, "")
+    : "";
 }
 
 const API_BASE_URL = apiBaseUrl();
