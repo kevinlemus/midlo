@@ -30,7 +30,9 @@ function escapeHtml(input: string): string {
 
 function clamp(input: string, max: number): string {
   const trimmed = input.trim();
-  return trimmed.length <= max ? trimmed : `${trimmed.slice(0, Math.max(0, max - 1)).trim()}…`;
+  return trimmed.length <= max
+    ? trimmed
+    : `${trimmed.slice(0, Math.max(0, max - 1)).trim()}…`;
 }
 
 function renderHtml({
@@ -97,7 +99,10 @@ function safeNumber(value: unknown): number | undefined {
 }
 
 function readApiBaseUrl(): string {
-  const env = process.env.VITE_API_URL || process.env.API_URL || process.env.MIDLO_API_URL;
+  const env =
+    process.env.VITE_API_URL ||
+    process.env.API_URL ||
+    process.env.MIDLO_API_URL;
   if (!env) {
     throw new Error("Missing API base URL (expected VITE_API_URL or API_URL)");
   }
@@ -109,7 +114,10 @@ function toApiUrl(apiBaseUrl: string, path: string): string {
   return `${apiBaseUrl}${normalizedPath}`;
 }
 
-async function fetchPlaceSummary(apiBaseUrl: string, placeId: string): Promise<PlaceSummary | null> {
+async function fetchPlaceSummary(
+  apiBaseUrl: string,
+  placeId: string,
+): Promise<PlaceSummary | null> {
   // Best-effort: try a couple likely endpoints. If neither works, we still serve a nice fallback card.
   const candidates = [
     `/places/${encodeURIComponent(placeId)}`,
@@ -147,7 +155,8 @@ async function fetchPlaceSummary(apiBaseUrl: string, placeId: string): Promise<P
             : typeof place?.photoName === "string"
               ? place.photoName
               : undefined,
-        websiteUri: typeof place?.websiteUri === "string" ? place.websiteUri : undefined,
+        websiteUri:
+          typeof place?.websiteUri === "string" ? place.websiteUri : undefined,
         googleMapsUri:
           typeof place?.googleMapsUri === "string"
             ? place.googleMapsUri
@@ -173,7 +182,10 @@ export default async function handler(request: Request): Promise<Response> {
   const placeId = segments[segments.length - 1] ?? "";
 
   const canonicalUrl = new URL(`/p/${encodeURIComponent(placeId)}`, origin);
-  const shareUrl = new URL(`/share/place/${encodeURIComponent(placeId)}`, origin);
+  const shareUrl = new URL(
+    `/share/place/${encodeURIComponent(placeId)}`,
+    origin,
+  );
   // Preserve optional query params so messaging apps can force re-scrapes.
   shareUrl.search = url.search;
 
@@ -192,7 +204,10 @@ export default async function handler(request: Request): Promise<Response> {
     const bits: string[] = [];
     if (place?.formattedAddress) bits.push(place.formattedAddress);
     if (typeof place?.rating === "number") {
-      const ratings = typeof place.userRatingCount === "number" ? ` (${place.userRatingCount})` : "";
+      const ratings =
+        typeof place.userRatingCount === "number"
+          ? ` (${place.userRatingCount})`
+          : "";
       bits.push(`⭐ ${place.rating.toFixed(1)}${ratings}`);
     }
 
@@ -224,7 +239,8 @@ export default async function handler(request: Request): Promise<Response> {
   return new Response(html, {
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=0, s-maxage=600, stale-while-revalidate=86400",
+      "cache-control":
+        "public, max-age=0, s-maxage=600, stale-while-revalidate=86400",
     },
   });
 }

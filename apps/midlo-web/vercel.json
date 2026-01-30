@@ -7,6 +7,9 @@
     {
       "source": "/share/place/:placeId",
       "destination": "/api/share/place/:placeId"
+    },
+    { 
+      "source": "/p/:placeId", "destination": "/" 
     }
   ]
 }

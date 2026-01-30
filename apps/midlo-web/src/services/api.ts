@@ -43,7 +43,10 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export const api = {
-  autocomplete: async (input: string, signal?: AbortSignal): Promise<AutocompleteSuggestion[]> => {
+  autocomplete: async (
+    input: string,
+    signal?: AbortSignal,
+  ): Promise<AutocompleteSuggestion[]> => {
     if (!input || input.trim().length < 3) return [];
     const suggestions = await getJson<AutocompleteSuggestion[]>(
       `/autocomplete?input=${encodeURIComponent(input)}`,

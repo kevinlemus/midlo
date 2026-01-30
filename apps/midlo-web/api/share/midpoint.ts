@@ -20,7 +20,9 @@ function escapeHtml(input: string): string {
 
 function clamp(input: string, max: number): string {
   const trimmed = input.trim();
-  return trimmed.length <= max ? trimmed : `${trimmed.slice(0, Math.max(0, max - 1)).trim()}…`;
+  return trimmed.length <= max
+    ? trimmed
+    : `${trimmed.slice(0, Math.max(0, max - 1)).trim()}…`;
 }
 
 function renderHtml({
@@ -89,9 +91,10 @@ export default async function handler(request: Request): Promise<Response> {
   const b = url.searchParams.get("b") ?? "";
 
   const title = "Meet in the middle • Midlo";
-  const description = a && b
-    ? clamp(`A fair place to meet between ${a} and ${b}.`, 160)
-    : "Find a friendly halfway point that feels fair to both sides.";
+  const description =
+    a && b
+      ? clamp(`A fair place to meet between ${a} and ${b}.`, 160)
+      : "Find a friendly halfway point that feels fair to both sides.";
 
   const imageUrl = `${origin}/og/midpoint.png`;
 
