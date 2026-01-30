@@ -28,49 +28,58 @@ export default function Home() {
 
   const isDisabled = !aText || !bText;
 
-  // 🔹 Where we scroll to when results are ready
+  // Scroll target for results
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const fromQueryRef = useRef(false);
 
+  // ⭐ On load: if URL has ?a= & ?b=, load results + scroll.
+  // If URL has NO params, clear everything (fresh home).
   useEffect(() => {
     const a = searchParams.get("a") ?? "";
     const b = searchParams.get("b") ?? "";
 
-    if (a || b) {
-      setAText(a);
-      setBText(b);
+    const hasQuery = Boolean(a && b);
 
-      if (a && b && !midpoint && !places.length) {
-        fromQueryRef.current = true;
-
-        (async () => {
-          try {
-            setIsLoading(true);
-            setError(null);
-            const mp = await api.getMidpoint(a, b);
-            setMidpoint(mp);
-            const pl = await api.getPlaces(mp.lat, mp.lng);
-            setPlaces(pl);
-
-            // Smooth scroll to results when coming from a shared link
-            setTimeout(() => {
-              if (resultsRef.current) {
-                const rect = resultsRef.current.getBoundingClientRect();
-                const top = window.scrollY + rect.top - 24;
-                window.scrollTo({ top, behavior: "smooth" });
-              }
-            }, 120);
-          } catch (e) {
-            setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
-          } finally {
-            setIsLoading(false);
-          }
-        })();
-      }
+    if (!hasQuery) {
+      // Fresh home page → clean slate
+      setAText("");
+      setBText("");
+      setMidpoint(null);
+      setPlaces([]);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // If query params exist → load results
+    setAText(a);
+    setBText(b);
+    fromQueryRef.current = true;
+
+    (async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const mp = await api.getMidpoint(a, b);
+        setMidpoint(mp);
+        const pl = await api.getPlaces(mp.lat, mp.lng);
+        setPlaces(pl);
+
+        // Auto-scroll to results
+        setTimeout(() => {
+          if (resultsRef.current) {
+            const rect = resultsRef.current.getBoundingClientRect();
+            const top = window.scrollY + rect.top - 24;
+            window.scrollTo({ top, behavior: "smooth" });
+          }
+        }, 120);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
+  // ⭐ Inline search
   const handleFind = async () => {
     if (isDisabled || isLoading) return;
     setIsLoading(true);
@@ -92,9 +101,10 @@ export default function Home() {
       setMidpoint(mp);
       setPlaces(pl);
 
+      // Update URL
       setSearchParams({ a: aText, b: bText }, { replace: true });
 
-      // Smooth scroll to results for inline searches too
+      // Scroll to results
       setTimeout(() => {
         if (resultsRef.current) {
           const rect = resultsRef.current.getBoundingClientRect();
@@ -109,6 +119,7 @@ export default function Home() {
     }
   };
 
+  // ⭐ Share midpoint
   const handleShare = async () => {
     const shareUrl = new URL("/share/midpoint", window.location.origin);
     if (aText) shareUrl.searchParams.set("a", aText);
@@ -118,7 +129,7 @@ export default function Home() {
 
     track("midpoint_shared", { shareUrl: urlString });
 
-    // Keep the message clean and let the OG card do the visual work.
+    // Clean share (URL only)
     if ((navigator as any).share) {
       try {
         await (navigator as any).share({
@@ -126,9 +137,7 @@ export default function Home() {
           url: urlString,
         });
         return;
-      } catch {
-        // fall through to clipboard
-      }
+      } catch {}
     }
 
     try {
@@ -137,6 +146,16 @@ export default function Home() {
     } catch {
       alert("Here’s your link:\n\n" + urlString);
     }
+  };
+
+  // ⭐ Clear button
+  const handleClear = () => {
+    setAText("");
+    setBText("");
+    setMidpoint(null);
+    setPlaces([]);
+    setSearchParams({}, { replace: true });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -261,7 +280,12 @@ export default function Home() {
               disabled={isDisabled || isLoading}
             />
 
-            {midpoint && <Button title="Share link" onClick={handleShare} variant="secondary" />}
+            {midpoint && (
+              <>
+                <Button title="Share link" onClick={handleShare} variant="secondary" />
+                <Button title="Clear" onClick={handleClear} variant="secondary" />
+              </>
+            )}
           </div>
 
           {error && (
@@ -309,7 +333,7 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Midpoint + map + results wrapper (for scroll target) */}
+        {/* Midpoint + map + results */}
         <div ref={resultsRef} style={{ marginTop: "var(--space-lg)" }}>
           <MapView height={240} hasMidpoint={Boolean(midpoint)} placesCount={places.length} />
 
