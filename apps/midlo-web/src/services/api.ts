@@ -6,18 +6,20 @@ export type AutocompleteSuggestion = {
 };
 
 function apiBaseUrl() {
-  const env = (import.meta as any).env;
-  const v = env?.VITE_API_URL as string | undefined;
-  if (!v || !v.trim()) {
-    throw new Error("Missing VITE_API_URL");
-  }
-  return v.trim().replace(/\/$/, "");
+  const v = import.meta.env.VITE_API_URL;
+  if (!v || !v.trim()) throw new Error("Missing VITE_API_URL");
+  return v.trim().replace(/\/+$/, "");
 }
 
 const API_BASE_URL = apiBaseUrl();
 
+function toApiUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+}
+
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(toApiUrl(path), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -32,7 +34,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, { signal });
+  const res = await fetch(toApiUrl(path), { signal });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`API error ${res.status}: ${text || res.statusText}`);
