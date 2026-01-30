@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/share/midpoint",
-      "destination": "/share/midpoint.html"
+      "destination": "/api/share/midpoint"
     },
     {
       "source": "/share/place/:placeId",
-      "destination": "/share/place.html"
+      "destination": "/api/share/place/:placeId"
     },
     {
       "source": "/p/:placeId",

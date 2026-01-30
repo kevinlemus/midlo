@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "../styles/theme.css";
 import "../styles/globals.css";
 import SearchBar from "../components/SearchBar";
@@ -28,6 +28,10 @@ export default function Home() {
 
   const isDisabled = !aText || !bText;
 
+  // 🔹 Where we scroll to when results are ready
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+  const fromQueryRef = useRef(false);
+
   useEffect(() => {
     const a = searchParams.get("a") ?? "";
     const b = searchParams.get("b") ?? "";
@@ -37,6 +41,8 @@ export default function Home() {
       setBText(b);
 
       if (a && b && !midpoint && !places.length) {
+        fromQueryRef.current = true;
+
         (async () => {
           try {
             setIsLoading(true);
@@ -45,6 +51,15 @@ export default function Home() {
             setMidpoint(mp);
             const pl = await api.getPlaces(mp.lat, mp.lng);
             setPlaces(pl);
+
+            // Smooth scroll to results when coming from a shared link
+            setTimeout(() => {
+              if (resultsRef.current) {
+                const rect = resultsRef.current.getBoundingClientRect();
+                const top = window.scrollY + rect.top - 24;
+                window.scrollTo({ top, behavior: "smooth" });
+              }
+            }, 120);
           } catch (e) {
             setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
           } finally {
@@ -53,6 +68,7 @@ export default function Home() {
         })();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFind = async () => {
@@ -61,6 +77,7 @@ export default function Home() {
     setError(null);
     setPlaces([]);
     setMidpoint(null);
+    fromQueryRef.current = false;
 
     try {
       const mp = await api.getMidpoint(aText, bText);
@@ -76,6 +93,15 @@ export default function Home() {
       setPlaces(pl);
 
       setSearchParams({ a: aText, b: bText }, { replace: true });
+
+      // Smooth scroll to results for inline searches too
+      setTimeout(() => {
+        if (resultsRef.current) {
+          const rect = resultsRef.current.getBoundingClientRect();
+          const top = window.scrollY + rect.top - 24;
+          window.scrollTo({ top, behavior: "smooth" });
+        }
+      }, 120);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
@@ -88,30 +114,28 @@ export default function Home() {
     if (aText) shareUrl.searchParams.set("a", aText);
     if (bText) shareUrl.searchParams.set("b", bText);
 
-    track("midpoint_shared", { shareUrl: shareUrl.toString() });
+    const urlString = shareUrl.toString();
 
-    const message = midpoint
-      ? `Meet in the middle with Midlo\n\nA: ${aText}\nB: ${bText}\nMidpoint: (${midpoint.lat.toFixed(
-          4,
-        )}, ${midpoint.lng.toFixed(4)})\n\n${shareUrl.toString()}`
-      : `Meet in the middle with Midlo\n\nA: ${aText}\nB: ${bText}\n\n${shareUrl.toString()}`;
+    track("midpoint_shared", { shareUrl: urlString });
 
+    // Keep the message clean and let the OG card do the visual work.
     if ((navigator as any).share) {
       try {
         await (navigator as any).share({
           title: "Meet in the middle with Midlo",
-          text: message,
-          url: shareUrl.toString(),
+          url: urlString,
         });
         return;
-      } catch {}
+      } catch {
+        // fall through to clipboard
+      }
     }
 
     try {
-      await navigator.clipboard.writeText(shareUrl.toString());
+      await navigator.clipboard.writeText(urlString);
       alert("Link copied to clipboard.");
     } catch {
-      alert("Here’s your link:\n\n" + shareUrl.toString());
+      alert("Here’s your link:\n\n" + urlString);
     }
   };
 
@@ -123,10 +147,7 @@ export default function Home() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-
-        // ⭐ FIX: keep card scrollable, do NOT vertically center
         justifyContent: "flex-start",
-
         backgroundColor: "var(--color-bg)",
         color: "var(--color-text)",
         padding: "var(--space-xl) var(--space-lg)",
@@ -149,7 +170,7 @@ export default function Home() {
         <div style={{ textAlign: "center", marginBottom: "var(--space-lg)" }}>
           <div
             style={{
-              display: "inline-flex", // ⭐ FIX: chip no longer full width
+              display: "inline-flex",
               justifyContent: "center",
               alignItems: "center",
               padding: "4px 12px",
@@ -196,8 +217,8 @@ export default function Home() {
               margin: 0,
             }}
           >
-            Drop in two locations and we’ll find a friendly halfway spot that feels fair to both sides—plus a few places
-            that actually feel good to meet at.
+            Drop in two locations and we’ll find a friendly halfway spot that feels fair to both
+            sides—plus a few places that actually feel good to meet at.
           </p>
         </div>
 
@@ -240,9 +261,7 @@ export default function Home() {
               disabled={isDisabled || isLoading}
             />
 
-            {midpoint && (
-              <Button title="Share link" onClick={handleShare} variant="secondary" />
-            )}
+            {midpoint && <Button title="Share link" onClick={handleShare} variant="secondary" />}
           </div>
 
           {error && (
@@ -290,8 +309,8 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Midpoint + map */}
-        <div style={{ marginTop: "var(--space-lg)" }}>
+        {/* Midpoint + map + results wrapper (for scroll target) */}
+        <div ref={resultsRef} style={{ marginTop: "var(--space-lg)" }}>
           <MapView height={240} hasMidpoint={Boolean(midpoint)} placesCount={places.length} />
 
           {midpoint && (
@@ -324,104 +343,110 @@ export default function Home() {
               </div>
             </div>
           )}
-        </div>
 
-        {/* Skeletons */}
-        {isLoading && !places.length && (
-          <div style={{ marginTop: "var(--space-md)", display: "grid", gap: "var(--space-sm)" }}>
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                style={{
-                  padding: "var(--space-md)",
-                  borderRadius: "var(--radius-md)",
-                  backgroundColor: "#E5E7EB",
-                  opacity: 0.6,
-                }}
-              >
-                <div
-                  style={{
-                    width: "60%",
-                    height: 14,
-                    borderRadius: 999,
-                    backgroundColor: "#CBD5F5",
-                    marginBottom: "var(--space-xs)",
-                  }}
-                />
-                <div
-                  style={{
-                    width: "40%",
-                    height: 10,
-                    borderRadius: 999,
-                    backgroundColor: "#D1D5DB",
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Places */}
-        {places.length > 0 && (
-          <div style={{ marginTop: "var(--space-lg)" }}>
+          {/* Skeletons */}
+          {isLoading && !places.length && (
             <div
               style={{
-                fontSize: "var(--font-size-subheading)",
-                color: "var(--color-primary-dark)",
-                fontWeight: 500,
-                marginBottom: "var(--space-xs)",
+                marginTop: "var(--space-md)",
+                display: "grid",
+                gap: "var(--space-sm)",
               }}
             >
-              Nearby options
-            </div>
-            <div
-              style={{
-                fontSize: "var(--font-size-caption)",
-                color: "var(--color-muted)",
-                marginBottom: "var(--space-sm)",
-              }}
-            >
-              A few places that make meeting in the middle actually feel good.
-            </div>
-
-            <div style={{ display: "grid", gap: "var(--space-sm)" }}>
-              {places.map((p, idx) => (
-                <PlaceCard
-                  key={p.placeId ?? String(idx)}
-                  title={p.name}
-                  distance={p.distance}
-                  onClick={() => {
-                    track("place_opened", { placeId: p.placeId });
-
-                    if (p.placeId) {
-                      const url = new URL(window.location.href);
-                      const a = aText || "";
-                      const b = bText || "";
-                      if (a) url.searchParams.set("a", a);
-                      if (b) url.searchParams.set("b", b);
-                      navigate(`/p/${encodeURIComponent(p.placeId)}${url.search}`, {
-                        replace: false,
-                      });
-                    }
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: "var(--space-md)",
+                    borderRadius: "var(--radius-md)",
+                    backgroundColor: "#E5E7EB",
+                    opacity: 0.6,
                   }}
-                />
+                >
+                  <div
+                    style={{
+                      width: "60%",
+                      height: 14,
+                      borderRadius: 999,
+                      backgroundColor: "#CBD5F5",
+                      marginBottom: "var(--space-xs)",
+                    }}
+                  />
+                  <div
+                    style={{
+                      width: "40%",
+                      height: 10,
+                      borderRadius: 999,
+                      backgroundColor: "#D1D5DB",
+                    }}
+                  />
+                </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {!midpoint && !places.length && !isLoading && (
-          <div
-            style={{
-              marginTop: "var(--space-md)",
-              fontSize: "var(--font-size-caption)",
-              color: "var(--color-muted)",
-              textAlign: "center",
-            }}
-          >
-            Add two locations above and see where you should meet in the middle.
-          </div>
-        )}
+          {/* Places */}
+          {places.length > 0 && (
+            <div style={{ marginTop: "var(--space-lg)" }}>
+              <div
+                style={{
+                  fontSize: "var(--font-size-subheading)",
+                  color: "var(--color-primary-dark)",
+                  fontWeight: 500,
+                  marginBottom: "var(--space-xs)",
+                }}
+              >
+                Nearby options
+              </div>
+              <div
+                style={{
+                  fontSize: "var(--font-size-caption)",
+                  color: "var(--color-muted)",
+                  marginBottom: "var(--space-sm)",
+                }}
+              >
+                A few places that make meeting in the middle actually feel good.
+              </div>
+
+              <div style={{ display: "grid", gap: "var(--space-sm)" }}>
+                {places.map((p, idx) => (
+                  <PlaceCard
+                    key={p.placeId ?? String(idx)}
+                    title={p.name}
+                    distance={p.distance}
+                    onClick={() => {
+                      track("place_opened", { placeId: p.placeId });
+
+                      if (p.placeId) {
+                        const url = new URL(window.location.href);
+                        const a = aText || "";
+                        const b = bText || "";
+                        if (a) url.searchParams.set("a", a);
+                        if (b) url.searchParams.set("b", b);
+                        navigate(`/p/${encodeURIComponent(p.placeId)}${url.search}`, {
+                          replace: false,
+                        });
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!midpoint && !places.length && !isLoading && (
+            <div
+              style={{
+                marginTop: "var(--space-md)",
+                fontSize: "var(--font-size-caption)",
+                color: "var(--color-muted)",
+                textAlign: "center",
+              }}
+            >
+              Add two locations above and see where you should meet in the middle.
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
