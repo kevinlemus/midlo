@@ -71,35 +71,40 @@ export default function PlaceDetailsPage() {
 
   const hasLatLng = typeof lat === "number" && typeof lng === "number";
 
-  const handleBack = () => navigate(-1);
+  const handleBack = () => {
+    // If opened from a share / no meaningful history, go to a clean home.
+    if (window.history.length <= 1) {
+      navigate("/", { replace: true });
+      return;
+    }
+    navigate(-1);
+  };
 
   const handleShare = async () => {
     const shareUrl = placeId
       ? new URL(`/share/place/${encodeURIComponent(placeId)}`, window.location.origin)
       : new URL(window.location.href);
 
-    const message = details
-      ? `Meet in the middle with Midlo\n\n${details.name ?? "Place"}\n${
-          details.formattedAddress ?? ""
-        }\n\n${shareUrl.toString()}`
-      : shareUrl.toString();
+    const urlString = shareUrl.toString();
 
+    // Web share: keep it to URL only to avoid duplicate previews in clients like iMessage on macOS.
     if ((navigator as any).share) {
       try {
         await (navigator as any).share({
           title: details?.name ?? "Midlo place",
-          text: message,
-          url: shareUrl.toString(),
+          url: urlString,
         });
         return;
-      } catch {}
+      } catch {
+        // fall through to clipboard
+      }
     }
 
     try {
-      await navigator.clipboard.writeText(shareUrl.toString());
+      await navigator.clipboard.writeText(urlString);
       alert("Link copied to clipboard.");
     } catch {
-      alert("Here’s your link:\n\n" + shareUrl.toString());
+      alert("Here’s your link:\n\n" + urlString);
     }
   };
 
@@ -113,9 +118,6 @@ export default function PlaceDetailsPage() {
         boxSizing: "border-box",
         display: "flex",
         justifyContent: "center",
-
-        // ⭐ Prevent Safari zoom from overflow
-        overflowX: "hidden",
         width: "100%",
       }}
     >
@@ -236,7 +238,7 @@ export default function PlaceDetailsPage() {
               Share this place
             </button>
 
-            {/* Hero Image */}
+            {/* Hero Image – fixed height to prevent layout jump when switching photos */}
             {hero && (
               <div
                 style={{
@@ -246,6 +248,7 @@ export default function PlaceDetailsPage() {
                   border: "1px solid var(--color-divider)",
                   backgroundColor: "var(--color-surface)",
                   boxShadow: "var(--shadow-card)",
+                  height: 260,
                 }}
               >
                 <img
@@ -253,8 +256,7 @@ export default function PlaceDetailsPage() {
                   alt={details.name ?? "Place photo"}
                   style={{
                     width: "100%",
-                    height: "auto",
-                    maxHeight: 380,
+                    height: "100%",
                     objectFit: "cover",
                     display: "block",
                   }}
@@ -459,7 +461,7 @@ export default function PlaceDetailsPage() {
                     Get directions
                   </button>
 
-                  {/* Provider grid — overflow-safe */}
+                  {/* Provider grid */}
                   <div
                     style={{
                       display: "grid",

@@ -55,10 +55,12 @@ export default function ResultsPage() {
         source: fromQuery ? "query_params" : "inline",
       });
 
-      // Smoothly scroll to results once they’re ready
+      // Smoothly scroll to the map/results block with a stable offset
       setTimeout(() => {
         if (resultsRef.current) {
-          resultsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+          const rect = resultsRef.current.getBoundingClientRect();
+          const top = window.scrollY + rect.top - 24;
+          window.scrollTo({ top, behavior: "smooth" });
         }
       }, 120);
     } catch (e) {
@@ -73,11 +75,13 @@ export default function ResultsPage() {
     if (locationA) url.searchParams.set("a", locationA);
     if (locationB) url.searchParams.set("b", locationB);
 
+    const urlString = url.toString();
+
     try {
-      await navigator.clipboard.writeText(url.toString());
+      await navigator.clipboard.writeText(urlString);
       alert("Link copied to clipboard.");
     } catch {
-      alert("Here’s your link:\n\n" + url.toString());
+      alert("Here’s your link:\n\n" + urlString);
     }
   };
 
@@ -239,7 +243,7 @@ export default function ResultsPage() {
 
         {/* Right column – map + results */}
         <div ref={resultsRef}>
-          {/* Map shell / placeholder – your existing Map component can live here */}
+          {/* Map shell / placeholder */}
           <div
             style={{
               width: "100%",
@@ -253,7 +257,6 @@ export default function ResultsPage() {
               overflow: "hidden",
             }}
           >
-            {/* You can swap this with your real Map component */}
             <div
               style={{
                 position: "absolute",

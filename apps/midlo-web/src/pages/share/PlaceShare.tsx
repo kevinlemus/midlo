@@ -22,7 +22,7 @@ export default function PlaceShare() {
         }),
       )
       .catch(() => {
-        // Fail silently for preview; fall back to generic copy.
+        // Silent fail for preview; fall back to generic copy.
       });
   }, [placeId]);
 
@@ -39,10 +39,6 @@ export default function PlaceShare() {
   const target = placeId
     ? new URL(`/p/${encodeURIComponent(placeId)}`, window.location.origin).toString()
     : window.location.origin;
-
-  useEffect(() => {
-    // No JS redirect; meta refresh handles humans.
-  }, []);
 
   return (
     <html>
@@ -64,7 +60,7 @@ export default function PlaceShare() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={image} />
 
-        {/* Meta description for fallback */}
+        {/* Fallback meta description */}
         <meta name="description" content={description} />
 
         {/* Instant redirect for humans tapping the link */}

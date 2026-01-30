@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useSearchParams } from "react-router-dom";
 
 export default function MidpointShare() {
@@ -14,17 +14,12 @@ export default function MidpointShare() {
 
   const image = "/og/midpoint.png";
 
-  // Target URL for humans when they tap the link
   const target = (() => {
     const u = new URL("/", window.location.origin);
     if (a) u.searchParams.set("a", a);
     if (b) u.searchParams.set("b", b);
     return u.toString();
   })();
-
-  useEffect(() => {
-    // No JS redirect for crawlers; meta refresh handles humans.
-  }, []);
 
   return (
     <html>
@@ -46,7 +41,7 @@ export default function MidpointShare() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={image} />
 
-        {/* Meta description for fallback */}
+        {/* Fallback meta description */}
         <meta name="description" content={description} />
 
         {/* Instant redirect for humans tapping the link */}
