@@ -84,37 +84,34 @@ export default function Home() {
   };
 
   const handleShare = async () => {
-    const url = new URL(window.location.href);
-    if (aText && bText) {
-      url.searchParams.set("a", aText);
-      url.searchParams.set("b", bText);
-    }
-    const shareUrl = url.toString();
+    const shareUrl = new URL("/share/midpoint", window.location.origin);
+    if (aText) shareUrl.searchParams.set("a", aText);
+    if (bText) shareUrl.searchParams.set("b", bText);
 
-    track("midpoint_shared", { shareUrl });
+    track("midpoint_shared", { shareUrl: shareUrl.toString() });
 
     const message = midpoint
       ? `Meet in the middle with Midlo\n\nA: ${aText}\nB: ${bText}\nMidpoint: (${midpoint.lat.toFixed(
           4,
-        )}, ${midpoint.lng.toFixed(4)})\n\n${shareUrl}`
-      : `Meet in the middle with Midlo\n\nA: ${aText}\nB: ${bText}\n\n${shareUrl}`;
+        )}, ${midpoint.lng.toFixed(4)})\n\n${shareUrl.toString()}`
+      : `Meet in the middle with Midlo\n\nA: ${aText}\nB: ${bText}\n\n${shareUrl.toString()}`;
 
     if ((navigator as any).share) {
       try {
         await (navigator as any).share({
           title: "Meet in the middle with Midlo",
           text: message,
-          url: shareUrl,
+          url: shareUrl.toString(),
         });
         return;
       } catch {}
     }
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(shareUrl.toString());
       alert("Link copied to clipboard.");
     } catch {
-      alert("Here’s your link:\n\n" + shareUrl);
+      alert("Here’s your link:\n\n" + shareUrl.toString());
     }
   };
 

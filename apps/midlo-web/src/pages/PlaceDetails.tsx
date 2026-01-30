@@ -74,29 +74,32 @@ export default function PlaceDetailsPage() {
   const handleBack = () => navigate(-1);
 
   const handleShare = async () => {
-    const url = new URL(window.location.href);
+    const shareUrl = placeId
+      ? new URL(`/share/place/${encodeURIComponent(placeId)}`, window.location.origin)
+      : new URL(window.location.href);
+
     const message = details
       ? `Meet in the middle with Midlo\n\n${details.name ?? "Place"}\n${
           details.formattedAddress ?? ""
-        }\n\n${url.toString()}`
-      : url.toString();
+        }\n\n${shareUrl.toString()}`
+      : shareUrl.toString();
 
     if ((navigator as any).share) {
       try {
         await (navigator as any).share({
           title: details?.name ?? "Midlo place",
           text: message,
-          url: url.toString(),
+          url: shareUrl.toString(),
         });
         return;
       } catch {}
     }
 
     try {
-      await navigator.clipboard.writeText(url.toString());
+      await navigator.clipboard.writeText(shareUrl.toString());
       alert("Link copied to clipboard.");
     } catch {
-      alert("Here’s your link:\n\n" + url.toString());
+      alert("Here’s your link:\n\n" + shareUrl.toString());
     }
   };
 

@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/share/midpoint",
+      "destination": "/api/share/midpoint"
+    },
+    {
+      "source": "/share/place/:placeId",
+      "destination": "/api/share/place/:placeId"
+    }
+  ]
+}
