@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Pressable,
+  Share,
   Linking,
   ScrollView as RNScrollView,
   Platform,
@@ -21,6 +22,7 @@ import type { PlacePhoto } from '../../services/api';
 import MidloCard from '../../components/MidloCard';
 import MidloButton from '../../components/MidloButton';
 import { mapsLinksWithPlaceId } from '../../utils/maps';
+import { placeShareUrl } from '../../utils/shareLinks';
 
 type PlaceRoute = RouteProp<RootStackParamList, 'Place'>;
 
@@ -81,6 +83,22 @@ export default function PlaceScreen() {
   const formatType = (t?: string) => {
     if (!t) return null;
     return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  const handleShare = async () => {
+    if (!placeId) return;
+
+    try {
+      const url = placeShareUrl(placeId);
+
+      const name = details?.name ?? 'Place';
+      const address = details?.formattedAddress ?? '';
+      const message = `Meet in the middle with Midlo:\n\n${name}${address ? `\n${address}` : ''}\n\n${url}`;
+
+      await Share.share({ title: name, message, url });
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -199,6 +217,15 @@ export default function PlaceScreen() {
                     {details.formattedAddress}
                   </Text>
                 ) : null}
+
+                {/* Full-width Share button */}
+                <View style={{ width: '100%', marginTop: theme.spacing.md }}>
+                  <MidloButton
+                    title="Share this place"
+                    onPress={handleShare}
+                    variant="secondary"
+                  />
+                </View>
 
                 {/* Chips */}
                 <View

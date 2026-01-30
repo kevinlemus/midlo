@@ -15,6 +15,7 @@ import { theme } from 'theme';
 import type { RootStackParamList } from 'navigation';
 import MidloButton from '../../components/MidloButton';
 import MidloCard from '../../components/MidloCard';
+import { midpointShareUrl } from '../../utils/shareLinks';
 
 import Logo from '../../assets/images/midlo_logo.png';
 
@@ -29,10 +30,11 @@ export default function ResultsScreen() {
 
   const handleShare = async () => {
     try {
+      const url = midpointShareUrl(locationA, locationB);
       const message = `Meet in the middle with Midlo:\n\nA: ${locationA}\nB: ${locationB}\nMidpoint: (${midpoint.lat.toFixed(
         4,
-      )}, ${midpoint.lng.toFixed(4)})`;
-      await Share.share({ message });
+      )}, ${midpoint.lng.toFixed(4)})\n\n${url}`;
+      await Share.share({ message, url });
     } catch {
       // ignore
     }
