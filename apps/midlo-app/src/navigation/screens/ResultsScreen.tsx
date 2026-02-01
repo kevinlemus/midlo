@@ -7,6 +7,7 @@ import {
   Share,
   Image,
   Pressable,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -16,6 +17,8 @@ import type { RootStackParamList } from 'navigation';
 import MidloButton from '../../components/MidloButton';
 import MidloCard from '../../components/MidloCard';
 import { midpointShareUrl } from '../../utils/shareLinks';
+import { track } from '../../services/analytics';
+import { api } from '../../services/api';
 
 import Logo from '../../assets/images/midlo_logo.png';
 
@@ -26,17 +29,53 @@ export default function ResultsScreen() {
     useNavigation<import('@react-navigation/native').NavigationProp<RootStackParamList>>();
   const route = useRoute<ResultsRoute>();
 
-  const { midpoint, places, locationA, locationB } = route.params;
+  const { midpoint, places: initialPlaces, locationA, locationB } = route.params;
+
+  const [places, setPlaces] = React.useState(initialPlaces);
+  const [isRescanning, setIsRescanning] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleShare = async () => {
     try {
       const url = midpointShareUrl(locationA, locationB);
-      const message = `Meet in the middle with Midlo:\n\nA: ${locationA}\nB: ${locationB}\nMidpoint: (${midpoint.lat.toFixed(
-        4,
-      )}, ${midpoint.lng.toFixed(4)})\n\n${url}`;
-      await Share.share({ message, url });
+
+      // Match web: clean, single-card share behavior
+      if (Platform.OS === 'ios') {
+        await Share.share({ url });
+      } else {
+        await Share.share({ message: url });
+      }
+
+      track('midpoint_shared', {
+        locationA,
+        locationB,
+        url,
+        placesCount: places.length,
+      });
     } catch {
       // ignore
+    }
+  };
+
+  const handleRescan = async () => {
+    if (isRescanning) return;
+    setIsRescanning(true);
+    setError(null);
+
+    try {
+      const refreshed = await api.getPlaces(midpoint.lat, midpoint.lng);
+      setPlaces(refreshed);
+
+      track('places_rescanned', {
+        locationA,
+        locationB,
+        placesCount: refreshed.length,
+        source: 'results_screen',
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
+    } finally {
+      setIsRescanning(false);
     }
   };
 
@@ -139,16 +178,48 @@ export default function ResultsScreen() {
               paddingTop: theme.spacing.lg,
             }}
           >
-            <Text
+            <View
               style={{
-                fontSize: theme.typography.subheading,
-                color: theme.colors.primaryDark,
-                fontWeight: theme.typography.weight.medium as any,
-                marginBottom: theme.spacing.sm,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: theme.spacing.xs,
               }}
             >
-              Nearby options
-            </Text>
+              <Text
+                style={{
+                  fontSize: theme.typography.subheading,
+                  color: theme.colors.primaryDark,
+                  fontWeight: theme.typography.weight.medium as any,
+                }}
+              >
+                Nearby options
+              </Text>
+
+              <Pressable
+                onPress={handleRescan}
+                disabled={isRescanning}
+                style={{
+                  paddingVertical: 4,
+                  paddingHorizontal: 10,
+                  borderRadius: theme.radii.pill,
+                  borderWidth: 1,
+                  borderColor: theme.colors.accent,
+                  backgroundColor: theme.colors.surface,
+                  opacity: isRescanning ? 0.7 : 1,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: theme.typography.caption,
+                    color: theme.colors.primaryDark,
+                  }}
+                >
+                  {isRescanning ? 'Refreshing…' : 'See different options'}
+                </Text>
+              </Pressable>
+            </View>
+
             <Text
               style={{
                 fontSize: theme.typography.caption,
@@ -159,12 +230,43 @@ export default function ResultsScreen() {
               A few places that make meeting in the middle actually feel good.
             </Text>
 
-            <View style={{ gap: theme.spacing.sm }}>
+            {error && (
+              <View
+                style={{
+                  marginBottom: theme.spacing.sm,
+                  padding: theme.spacing.sm,
+                  borderRadius: theme.radii.md,
+                  borderWidth: 1,
+                  borderColor: '#FCA5A5',
+                  backgroundColor: '#FEF2F2',
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.danger,
+                    fontSize: theme.typography.caption,
+                    textAlign: 'center',
+                  }}
+                >
+                  {error}
+                </Text>
+              </View>
+            )}
+
+            <View
+              style={{
+                gap: theme.spacing.sm,
+                opacity: isRescanning ? 0.7 : 1,
+              }}
+            >
               {places.map((p, idx) => (
                 <Pressable
                   key={p.placeId ?? String(idx)}
                   onPress={() => {
-                    if (p.placeId) navigation.navigate('Place', { placeId: p.placeId });
+                    if (p.placeId) {
+                      track('place_opened', { placeId: p.placeId, source: 'results' });
+                      navigation.navigate('Place', { placeId: p.placeId });
+                    }
                   }}
                   style={({ pressed }) => [
                     {

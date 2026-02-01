@@ -24,6 +24,7 @@ export default function Home() {
   const [places, setPlaces] = useState<Place[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isRescanning, setIsRescanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isDisabled = !aText || !bText;
@@ -156,6 +157,30 @@ export default function Home() {
     setPlaces([]);
     setSearchParams({}, { replace: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // ⭐ Rescan nearby places (keep midpoint fixed, refresh vibes)
+  const handleRescan = async () => {
+    if (!midpoint || isRescanning) return;
+    setIsRescanning(true);
+    setError(null);
+
+    try {
+      const refreshed = await api.getPlaces(midpoint.lat, midpoint.lng);
+
+      track("places_rescanned" as Parameters<typeof track>[0], {
+        locationA: aText,
+        locationB: bText,
+        placesCount: refreshed.length,
+        source: fromQueryRef.current ? "query_params" : "inline",
+      });
+
+      setPlaces(refreshed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+    } finally {
+      setIsRescanning(false);
+    }
   };
 
   return (
@@ -414,14 +439,45 @@ export default function Home() {
             <div style={{ marginTop: "var(--space-lg)" }}>
               <div
                 style={{
-                  fontSize: "var(--font-size-subheading)",
-                  color: "var(--color-primary-dark)",
-                  fontWeight: 500,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   marginBottom: "var(--space-xs)",
+                  gap: "var(--space-sm)",
                 }}
               >
-                Nearby options
+                <div
+                  style={{
+                    fontSize: "var(--font-size-subheading)",
+                    color: "var(--color-primary-dark)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Nearby options
+                </div>
+
+                {midpoint && (
+                  <button
+                    type="button"
+                    onClick={handleRescan}
+                    disabled={isRescanning}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "var(--radius-pill)",
+                      border: "1px solid var(--color-accent)",
+                      backgroundColor: "var(--color-surface)",
+                      color: "var(--color-primary-dark)",
+                      cursor: isRescanning ? "default" : "pointer",
+                      fontSize: "var(--font-size-caption)",
+                      opacity: isRescanning ? 0.7 : 1,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {isRescanning ? "Refreshing…" : "See different options"}
+                  </button>
+                )}
               </div>
+
               <div
                 style={{
                   fontSize: "var(--font-size-caption)",
@@ -432,7 +488,14 @@ export default function Home() {
                 A few places that make meeting in the middle actually feel good.
               </div>
 
-              <div style={{ display: "grid", gap: "var(--space-sm)" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "var(--space-sm)",
+                  opacity: isRescanning ? 0.7 : 1,
+                  pointerEvents: isRescanning ? "none" : "auto",
+                }}
+              >
                 {places.map((p, idx) => (
                   <PlaceCard
                     key={p.placeId ?? String(idx)}

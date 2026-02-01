@@ -17,11 +17,12 @@ export default function ResultsPage() {
   const [midpoint, setMidpoint] = useState<Midpoint | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRescanning, setIsRescanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
 
-  const isDisabled = !locationA || !locationB || isLoading;
+  const isDisabled = !locationA || !locationB || isLoading || isRescanning;
 
   useEffect(() => {
     if (initialA && initialB) {
@@ -37,6 +38,7 @@ export default function ResultsPage() {
     }
 
     setIsLoading(true);
+    setIsRescanning(false);
     setError(null);
     setMidpoint(null);
     setPlaces([]);
@@ -67,6 +69,29 @@ export default function ResultsPage() {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRescanPlaces = async () => {
+    if (!midpoint) return;
+
+    setIsRescanning(true);
+    setError(null);
+
+    try {
+      const nearby = await api.getPlaces(midpoint.lat, midpoint.lng);
+      setPlaces(nearby);
+
+      track("places_rescanned" as Parameters<typeof track>[0], {
+        locationA,
+        locationB,
+        placesCount: nearby.length,
+        source: "results_rescan",
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn’t refresh options. Try again.");
+    } finally {
+      setIsRescanning(false);
     }
   };
 
@@ -202,15 +227,7 @@ export default function ResultsPage() {
                 {isLoading ? "Finding midpoint…" : "Find midpoint"}
               </button>
 
-              {midpoint && (
-                <button
-                  type="button"
-                  onClick={handleShareMidpoint}
-                  className="midlo-button midlo-button-secondary"
-                >
-                  Share link
-                </button>
-              )}
+              {/* Share moved to results column; keep this area focused on input action */}
             </div>
 
             {error && (
@@ -333,14 +350,41 @@ export default function ResultsPage() {
             <div>
               <div
                 style={{
-                  fontSize: "var(--font-size-subheading)",
-                  color: "var(--color-primary-dark)",
-                  fontWeight: 500,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "var(--space-sm)",
                   marginBottom: "var(--space-xs)",
                 }}
               >
-                Nearby options
+                <div
+                  style={{
+                    fontSize: "var(--font-size-subheading)",
+                    color: "var(--color-primary-dark)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Nearby options
+                </div>
+
+                {midpoint && (
+                  <button
+                    type="button"
+                    onClick={() => void handleRescanPlaces()}
+                    disabled={isRescanning || isLoading}
+                    className="midlo-button midlo-button-secondary"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "var(--font-size-caption)",
+                      borderRadius: "var(--radius-pill)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {isRescanning ? "Finding new options…" : "See different options"}
+                  </button>
+                )}
               </div>
+
               <div
                 style={{
                   fontSize: "var(--font-size-caption)",
@@ -388,7 +432,35 @@ export default function ResultsPage() {
                   </button>
                 ))}
               </div>
+
+              {/* Share link – now clearly associated with this set of options */}
+              <button
+                type="button"
+                onClick={handleShareMidpoint}
+                className="midlo-button midlo-button-secondary"
+                style={{
+                  marginTop: "var(--space-lg)",
+                  width: "100%",
+                }}
+              >
+                Share this midpoint & list
+              </button>
             </div>
+          )}
+
+          {/* If there is a midpoint but no places (edge case), still allow sharing */}
+          {midpoint && !isLoading && !places.length && (
+            <button
+              type="button"
+              onClick={handleShareMidpoint}
+              className="midlo-button midlo-button-secondary"
+              style={{
+                marginTop: "var(--space-md)",
+                width: "100%",
+              }}
+            >
+              Share this midpoint
+            </button>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@
 export type AnalyticsEvent =
   | "midpoint_searched"
   | "midpoint_shared"
+  | "places_rescanned"
   | "place_opened"
   | "directions_clicked";
 
