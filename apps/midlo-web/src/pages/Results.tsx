@@ -28,7 +28,6 @@ export default function ResultsPage() {
     if (initialA && initialB) {
       void handleFindMidpoint(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFindMidpoint = async (fromQuery = false) => {
@@ -57,7 +56,6 @@ export default function ResultsPage() {
         source: fromQuery ? "query_params" : "inline",
       });
 
-      // Smoothly scroll to the map/results block with a stable offset
       setTimeout(() => {
         if (resultsRef.current) {
           const rect = resultsRef.current.getBoundingClientRect();
@@ -129,7 +127,7 @@ export default function ResultsPage() {
           gap: "var(--space-xl)",
         }}
       >
-        {/* Left column – inputs and hero copy */}
+        {/* LEFT COLUMN */}
         <div>
           <div
             style={{
@@ -164,11 +162,11 @@ export default function ResultsPage() {
           >
             A fair place to meet, in seconds.
           </h1>
+
           <p
             style={{
               fontSize: "var(--font-size-body)",
               color: "var(--color-text-secondary)",
-              margin: 0,
               marginBottom: "var(--space-lg)",
             }}
           >
@@ -176,6 +174,7 @@ export default function ResultsPage() {
             sides—plus nearby places that actually feel good to meet at.
           </p>
 
+          {/* INPUTS */}
           <div style={{ display: "grid", gap: "var(--space-md)" }}>
             <div>
               <div
@@ -217,18 +216,14 @@ export default function ResultsPage() {
               />
             </div>
 
-            <div style={{ display: "grid", gap: "var(--space-sm)" }}>
-              <button
-                type="button"
-                onClick={() => void handleFindMidpoint(false)}
-                disabled={isDisabled}
-                className="midlo-button midlo-button-primary"
-              >
-                {isLoading ? "Finding midpoint…" : "Find midpoint"}
-              </button>
-
-              {/* Share moved to results column; keep this area focused on input action */}
-            </div>
+            <button
+              type="button"
+              onClick={() => void handleFindMidpoint(false)}
+              disabled={isDisabled}
+              className="midlo-button midlo-button-primary"
+            >
+              {isLoading ? "Finding midpoint…" : "Find midpoint"}
+            </button>
 
             {error && (
               <div
@@ -258,9 +253,9 @@ export default function ResultsPage() {
           </div>
         </div>
 
-        {/* Right column – map + results */}
+        {/* RIGHT COLUMN */}
         <div ref={resultsRef}>
-          {/* Map shell / placeholder */}
+          {/* MAP PLACEHOLDER */}
           <div
             style={{
               width: "100%",
@@ -270,25 +265,16 @@ export default function ResultsPage() {
               background:
                 "radial-gradient(circle at 20% 20%, #E8F5E9 0, #F3F4F6 40%, #FFFFFF 100%)",
               marginBottom: "var(--space-lg)",
-              position: "relative",
-              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--color-text-secondary)",
+              fontSize: "var(--font-size-caption)",
             }}
           >
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--color-text-secondary)",
-                fontSize: "var(--font-size-caption)",
-              }}
-            >
-              {midpoint
-                ? "Map centered on your midpoint and nearby options."
-                : "Your midpoint map will appear here."}
-            </div>
+            {midpoint
+              ? "Map centered on your midpoint and nearby options."
+              : "Your midpoint map will appear here."}
           </div>
 
           {midpoint && (
@@ -312,48 +298,15 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {isLoading && !places.length && (
-            <div style={{ display: "grid", gap: "var(--space-sm)" }}>
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: "var(--space-md)",
-                    borderRadius: "var(--radius-md)",
-                    backgroundColor: "#E5E7EB",
-                    opacity: 0.7,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "60%",
-                      height: 14,
-                      borderRadius: 999,
-                      backgroundColor: "#CBD5F5",
-                      marginBottom: "var(--space-xs)",
-                    }}
-                  />
-                  <div
-                    style={{
-                      width: "40%",
-                      height: 10,
-                      borderRadius: 999,
-                      backgroundColor: "#D1D5DB",
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
+          {/* RESULTS */}
           {places.length > 0 && (
             <div>
+              {/* HEADER + RESCAN */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: "var(--space-sm)",
                   marginBottom: "var(--space-xs)",
                 }}
               >
@@ -367,22 +320,20 @@ export default function ResultsPage() {
                   Nearby options
                 </div>
 
-                {midpoint && (
-                  <button
-                    type="button"
-                    onClick={() => void handleRescanPlaces()}
-                    disabled={isRescanning || isLoading}
-                    className="midlo-button midlo-button-secondary"
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "var(--font-size-caption)",
-                      borderRadius: "var(--radius-pill)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isRescanning ? "Finding new options…" : "See different options"}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleRescanPlaces}
+                  disabled={isRescanning}
+                  className="midlo-button midlo-button-secondary"
+                  style={{
+                    padding: "6px 12px",
+                    fontSize: "var(--font-size-caption)",
+                    borderRadius: "var(--radius-pill)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {isRescanning ? "Finding new options…" : "See different options"}
+                </button>
               </div>
 
               <div
@@ -395,6 +346,7 @@ export default function ResultsPage() {
                 A few places that make meeting in the middle actually feel good.
               </div>
 
+              {/* LIST */}
               <div style={{ display: "grid", gap: "var(--space-sm)" }}>
                 {places.map((p) => (
                   <button
@@ -433,7 +385,7 @@ export default function ResultsPage() {
                 ))}
               </div>
 
-              {/* Share link – now clearly associated with this set of options */}
+              {/* SHARE BUTTON — MOVED DOWN */}
               <button
                 type="button"
                 onClick={handleShareMidpoint}
@@ -446,21 +398,6 @@ export default function ResultsPage() {
                 Share this midpoint & list
               </button>
             </div>
-          )}
-
-          {/* If there is a midpoint but no places (edge case), still allow sharing */}
-          {midpoint && !isLoading && !places.length && (
-            <button
-              type="button"
-              onClick={handleShareMidpoint}
-              className="midlo-button midlo-button-secondary"
-              style={{
-                marginTop: "var(--space-md)",
-                width: "100%",
-              }}
-            >
-              Share this midpoint
-            </button>
           )}
         </div>
       </div>

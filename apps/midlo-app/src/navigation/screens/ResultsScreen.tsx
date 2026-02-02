@@ -29,17 +29,15 @@ export default function ResultsScreen() {
     useNavigation<import('@react-navigation/native').NavigationProp<RootStackParamList>>();
   const route = useRoute<ResultsRoute>();
 
-  const { midpoint, places: initialPlaces, locationA, locationB } = route.params;
+  const { midpoint, places, locationA, locationB } = route.params;
 
-  const [places, setPlaces] = React.useState(initialPlaces);
+  const [currentPlaces, setCurrentPlaces] = React.useState(places);
   const [isRescanning, setIsRescanning] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
   const handleShare = async () => {
     try {
       const url = midpointShareUrl(locationA, locationB);
 
-      // Match web: clean, single-card share behavior
       if (Platform.OS === 'ios') {
         await Share.share({ url });
       } else {
@@ -50,7 +48,7 @@ export default function ResultsScreen() {
         locationA,
         locationB,
         url,
-        placesCount: places.length,
+        placesCount: currentPlaces.length,
       });
     } catch {
       // ignore
@@ -58,22 +56,21 @@ export default function ResultsScreen() {
   };
 
   const handleRescan = async () => {
-    if (isRescanning) return;
-    setIsRescanning(true);
-    setError(null);
+    if (!midpoint) return;
 
+    setIsRescanning(true);
     try {
       const refreshed = await api.getPlaces(midpoint.lat, midpoint.lng);
-      setPlaces(refreshed);
+      setCurrentPlaces(refreshed);
 
       track('places_rescanned', {
         locationA,
         locationB,
         placesCount: refreshed.length,
-        source: 'results_screen',
+        source: 'results_rescan',
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
+    } catch {
+      // ignore for now
     } finally {
       setIsRescanning(false);
     }
@@ -162,13 +159,19 @@ export default function ResultsScreen() {
             </View>
           </View>
 
+          {/* Primary actions */}
           <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
             <MidloButton
               title="View on map"
-              onPress={() => navigation.navigate('Map', { midpoint, places })}
+              onPress={() => navigation.navigate('Map', { midpoint, places: currentPlaces })}
               variant="primary"
             />
-            <MidloButton title="Share link" onPress={handleShare} variant="secondary" />
+            <MidloButton
+              title={isRescanning ? 'Finding new options…' : 'See different options'}
+              onPress={handleRescan}
+              variant="secondary"
+              disabled={isRescanning}
+            />
           </View>
 
           <View
@@ -178,48 +181,16 @@ export default function ResultsScreen() {
               paddingTop: theme.spacing.lg,
             }}
           >
-            <View
+            <Text
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: theme.spacing.xs,
+                fontSize: theme.typography.subheading,
+                color: theme.colors.primaryDark,
+                fontWeight: theme.typography.weight.medium as any,
+                marginBottom: theme.spacing.sm,
               }}
             >
-              <Text
-                style={{
-                  fontSize: theme.typography.subheading,
-                  color: theme.colors.primaryDark,
-                  fontWeight: theme.typography.weight.medium as any,
-                }}
-              >
-                Nearby options
-              </Text>
-
-              <Pressable
-                onPress={handleRescan}
-                disabled={isRescanning}
-                style={{
-                  paddingVertical: 4,
-                  paddingHorizontal: 10,
-                  borderRadius: theme.radii.pill,
-                  borderWidth: 1,
-                  borderColor: theme.colors.accent,
-                  backgroundColor: theme.colors.surface,
-                  opacity: isRescanning ? 0.7 : 1,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.typography.caption,
-                    color: theme.colors.primaryDark,
-                  }}
-                >
-                  {isRescanning ? 'Refreshing…' : 'See different options'}
-                </Text>
-              </Pressable>
-            </View>
-
+              Nearby options
+            </Text>
             <Text
               style={{
                 fontSize: theme.typography.caption,
@@ -230,36 +201,8 @@ export default function ResultsScreen() {
               A few places that make meeting in the middle actually feel good.
             </Text>
 
-            {error && (
-              <View
-                style={{
-                  marginBottom: theme.spacing.sm,
-                  padding: theme.spacing.sm,
-                  borderRadius: theme.radii.md,
-                  borderWidth: 1,
-                  borderColor: '#FCA5A5',
-                  backgroundColor: '#FEF2F2',
-                }}
-              >
-                <Text
-                  style={{
-                    color: theme.colors.danger,
-                    fontSize: theme.typography.caption,
-                    textAlign: 'center',
-                  }}
-                >
-                  {error}
-                </Text>
-              </View>
-            )}
-
-            <View
-              style={{
-                gap: theme.spacing.sm,
-                opacity: isRescanning ? 0.7 : 1,
-              }}
-            >
-              {places.map((p, idx) => (
+            <View style={{ gap: theme.spacing.sm }}>
+              {currentPlaces.map((p, idx) => (
                 <Pressable
                   key={p.placeId ?? String(idx)}
                   onPress={() => {
@@ -300,6 +243,15 @@ export default function ResultsScreen() {
                   </Text>
                 </Pressable>
               ))}
+            </View>
+
+            {/* Share link – clearly associated with this list */}
+            <View style={{ marginTop: theme.spacing.lg }}>
+              <MidloButton
+                title="Share this midpoint & list"
+                onPress={handleShare}
+                variant="secondary"
+              />
             </View>
           </View>
         </MidloCard>
