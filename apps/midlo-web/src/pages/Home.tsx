@@ -17,6 +17,8 @@ export default function Home() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const MAX_RESCANS_PER_SEARCH = 3;
+
   const [aText, setAText] = useState("");
   const [bText, setBText] = useState("");
 
@@ -25,6 +27,7 @@ export default function Home() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isRescanning, setIsRescanning] = useState(false);
+  const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const isDisabled = !aText || !bText;
@@ -47,6 +50,7 @@ export default function Home() {
       setBText("");
       setMidpoint(null);
       setPlaces([]);
+      setRescanCount(0);
       return;
     }
 
@@ -59,10 +63,11 @@ export default function Home() {
       try {
         setIsLoading(true);
         setError(null);
+        setRescanCount(0);
         const mp = await api.getMidpoint(a, b);
         setMidpoint(mp);
         const pl = await api.getPlaces(mp.lat, mp.lng);
-        setPlaces(pl);
+        setPlaces(pl.slice(0, 5));
 
         // Auto-scroll to results
         setTimeout(() => {
@@ -80,6 +85,56 @@ export default function Home() {
     })();
   }, []);
 
+  const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
+
+  const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
+    // mulberry32
+    const rand = (() => {
+      let t = seed >>> 0;
+      return () => {
+        t += 0x6d2b79f5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    })();
+
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const pickFiveUnique = (candidates: Place[], exclude: Place[], seed: number) => {
+    const excludeKeys = new Set(exclude.map(placeKey));
+    const uniq: Place[] = [];
+    const seen = new Set<string>();
+
+    for (const p of candidates) {
+      const k = placeKey(p);
+      if (excludeKeys.has(k)) continue;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      uniq.push(p);
+      if (uniq.length >= 5) break;
+    }
+
+    if (uniq.length >= 5) return uniq;
+
+    const shuffledFallback = shuffleWithSeed(exclude, seed).slice(0, 5);
+    return uniq.length ? [...uniq, ...shuffledFallback].slice(0, 5) : shuffledFallback;
+  };
+
+  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
+    const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
+    const radiusDeg = 0.0015 + attempt * 0.001;
+    const latDelta = Math.cos(angle) * radiusDeg;
+    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    return { lat: lat + latDelta, lng: lng + lngDelta };
+  };
+
   // ⭐ Inline search
   const handleFind = async () => {
     if (isDisabled || isLoading) return;
@@ -87,6 +142,7 @@ export default function Home() {
     setError(null);
     setPlaces([]);
     setMidpoint(null);
+    setRescanCount(0);
     fromQueryRef.current = false;
 
     try {
@@ -100,7 +156,7 @@ export default function Home() {
       });
 
       setMidpoint(mp);
-      setPlaces(pl);
+      setPlaces(pl.slice(0, 5));
 
       // Update URL
       setSearchParams({ a: aText, b: bText }, { replace: true });
@@ -155,6 +211,7 @@ export default function Home() {
     setBText("");
     setMidpoint(null);
     setPlaces([]);
+    setRescanCount(0);
     setSearchParams({}, { replace: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -162,20 +219,39 @@ export default function Home() {
   // ⭐ Rescan nearby places (keep midpoint fixed, refresh vibes)
   const handleRescan = async () => {
     if (!midpoint || isRescanning) return;
+    if (rescanCount >= MAX_RESCANS_PER_SEARCH) return;
     setIsRescanning(true);
     setError(null);
 
     try {
-      const refreshed = await api.getPlaces(midpoint.lat, midpoint.lng);
+      const seed = Date.now();
+      const current = places;
+
+      let pool: Place[] = [];
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const coords =
+          attempt === 0
+            ? { lat: midpoint.lat, lng: midpoint.lng }
+            : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
+        // eslint-disable-next-line no-await-in-loop
+        const batch = await api.getPlaces(coords.lat, coords.lng);
+        pool = pool.concat(batch);
+        const next = pickFiveUnique(pool, current, seed);
+        if (next.length === 5 && next.some((p) => !new Set(current.map(placeKey)).has(placeKey(p)))) {
+          setPlaces(next);
+          break;
+        }
+        if (attempt === 3) setPlaces(pickFiveUnique(pool, current, seed));
+      }
+
+      setRescanCount((c) => c + 1);
 
       track("places_rescanned" as Parameters<typeof track>[0], {
         locationA: aText,
         locationB: bText,
-        placesCount: refreshed.length,
+        placesCount: 5,
         source: fromQueryRef.current ? "query_params" : "inline",
       });
-
-      setPlaces(refreshed);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
@@ -307,7 +383,6 @@ export default function Home() {
 
             {midpoint && (
               <>
-                <Button title="Share link" onClick={handleShare} variant="secondary" />
                 <Button title="Clear" onClick={handleClear} variant="secondary" />
               </>
             )}
@@ -460,20 +535,27 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={handleRescan}
-                    disabled={isRescanning}
+                      disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
                     style={{
                       padding: "4px 10px",
                       borderRadius: "var(--radius-pill)",
                       border: "1px solid var(--color-accent)",
                       backgroundColor: "var(--color-surface)",
                       color: "var(--color-primary-dark)",
-                      cursor: isRescanning ? "default" : "pointer",
+                        cursor:
+                          isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH
+                            ? "default"
+                            : "pointer",
                       fontSize: "var(--font-size-caption)",
-                      opacity: isRescanning ? 0.7 : 1,
+                        opacity: isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH ? 0.7 : 1,
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {isRescanning ? "Refreshing…" : "See different options"}
+                      {isRescanning
+                        ? "Refreshing…"
+                        : rescanCount >= MAX_RESCANS_PER_SEARCH
+                          ? "Try adjusting your locations"
+                          : "See different options"}
                   </button>
                 )}
               </div>
@@ -517,6 +599,10 @@ export default function Home() {
                     }}
                   />
                 ))}
+              </div>
+
+              <div style={{ marginTop: "var(--space-lg)" }}>
+                <Button title="Share this midpoint & list" onClick={handleShare} variant="secondary" />
               </div>
             </div>
           )}

@@ -8,6 +8,8 @@ export default function ResultsPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
+  const MAX_RESCANS_PER_SEARCH = 3;
+
   const initialA = params.get("a") ?? "";
   const initialB = params.get("b") ?? "";
 
@@ -18,6 +20,7 @@ export default function ResultsPage() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRescanning, setIsRescanning] = useState(false);
+  const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
@@ -30,6 +33,57 @@ export default function ResultsPage() {
     }
   }, []);
 
+  const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
+
+  const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
+    // mulberry32
+    const rand = (() => {
+      let t = seed >>> 0;
+      return () => {
+        t += 0x6d2b79f5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    })();
+
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const pickFiveUnique = (candidates: Place[], exclude: Place[], seed: number) => {
+    const excludeKeys = new Set(exclude.map(placeKey));
+    const uniq: Place[] = [];
+    const seen = new Set<string>();
+
+    for (const p of candidates) {
+      const k = placeKey(p);
+      if (excludeKeys.has(k)) continue;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      uniq.push(p);
+      if (uniq.length >= 5) break;
+    }
+
+    if (uniq.length >= 5) return uniq;
+
+    // If backend returns the same 5 repeatedly, make the UI still change (stable + honest).
+    const shuffledFallback = shuffleWithSeed(exclude, seed).slice(0, 5);
+    return uniq.length ? [...uniq, ...shuffledFallback].slice(0, 5) : shuffledFallback;
+  };
+
+  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
+    const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
+    const radiusDeg = 0.0015 + attempt * 0.001; // ~150m → ~450m-ish
+    const latDelta = Math.cos(angle) * radiusDeg;
+    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    return { lat: lat + latDelta, lng: lng + lngDelta };
+  };
+
   const handleFindMidpoint = async (fromQuery = false) => {
     if (!locationA || !locationB) {
       setError("Add both locations to find a fair midpoint.");
@@ -38,6 +92,7 @@ export default function ResultsPage() {
 
     setIsLoading(true);
     setIsRescanning(false);
+    setRescanCount(0);
     setError(null);
     setMidpoint(null);
     setPlaces([]);
@@ -47,7 +102,7 @@ export default function ResultsPage() {
       const nearby = await api.getPlaces(mp.lat, mp.lng);
 
       setMidpoint(mp);
-      setPlaces(nearby);
+      setPlaces(nearby.slice(0, 5));
 
       track("midpoint_searched", {
         locationA,
@@ -72,18 +127,37 @@ export default function ResultsPage() {
 
   const handleRescanPlaces = async () => {
     if (!midpoint) return;
+    if (rescanCount >= MAX_RESCANS_PER_SEARCH) return;
 
     setIsRescanning(true);
     setError(null);
 
     try {
-      const nearby = await api.getPlaces(midpoint.lat, midpoint.lng);
-      setPlaces(nearby);
+      const seed = Date.now();
+      const current = places;
+
+      let pool: Place[] = [];
+      // Try a few small jitters around the midpoint to encourage variety.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const coords = attempt === 0 ? { lat: midpoint.lat, lng: midpoint.lng } : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
+        // eslint-disable-next-line no-await-in-loop
+        const batch = await api.getPlaces(coords.lat, coords.lng);
+        pool = pool.concat(batch);
+        const next = pickFiveUnique(pool, current, seed);
+        if (next.length === 5 && next.some((p) => !new Set(current.map(placeKey)).has(placeKey(p)))) {
+          setPlaces(next);
+          break;
+        }
+        // keep looping for a better set
+        if (attempt === 3) setPlaces(pickFiveUnique(pool, current, seed));
+      }
+
+      setRescanCount((c) => c + 1);
 
       track("places_rescanned" as Parameters<typeof track>[0], {
         locationA,
         locationB,
-        placesCount: nearby.length,
+        placesCount: 5,
         source: "results_rescan",
       });
     } catch (e) {
@@ -323,7 +397,7 @@ export default function ResultsPage() {
                 <button
                   type="button"
                   onClick={handleRescanPlaces}
-                  disabled={isRescanning}
+                  disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
                   className="midlo-button midlo-button-secondary"
                   style={{
                     padding: "6px 12px",
@@ -332,7 +406,11 @@ export default function ResultsPage() {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {isRescanning ? "Finding new options…" : "See different options"}
+                  {isRescanning
+                    ? "Finding new options…"
+                    : rescanCount >= MAX_RESCANS_PER_SEARCH
+                      ? "Try adjusting your locations"
+                      : "See different options"}
                 </button>
               </div>
 

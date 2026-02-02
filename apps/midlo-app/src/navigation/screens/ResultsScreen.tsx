@@ -31,8 +31,61 @@ export default function ResultsScreen() {
 
   const { midpoint, places, locationA, locationB } = route.params;
 
-  const [currentPlaces, setCurrentPlaces] = React.useState(places);
+  const MAX_RESCANS_PER_SEARCH = 3;
+
+  const [currentPlaces, setCurrentPlaces] = React.useState(places.slice(0, 5));
   const [isRescanning, setIsRescanning] = React.useState(false);
+  const [rescanCount, setRescanCount] = React.useState(0);
+
+  const placeKey = (p: (typeof currentPlaces)[number]) => p.placeId || `${p.name}__${p.distance}`;
+
+  const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
+    // mulberry32
+    const rand = (() => {
+      let t = seed >>> 0;
+      return () => {
+        t += 0x6d2b79f5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    })();
+
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const pickFiveUnique = (candidates: typeof currentPlaces, exclude: typeof currentPlaces, seed: number) => {
+    const excludeKeys = new Set(exclude.map(placeKey));
+    const uniq: typeof currentPlaces = [];
+    const seen = new Set<string>();
+
+    for (const p of candidates) {
+      const k = placeKey(p);
+      if (excludeKeys.has(k)) continue;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      uniq.push(p);
+      if (uniq.length >= 5) break;
+    }
+
+    if (uniq.length >= 5) return uniq;
+
+    const shuffledFallback = shuffleWithSeed(exclude, seed).slice(0, 5);
+    return uniq.length ? [...uniq, ...shuffledFallback].slice(0, 5) : shuffledFallback;
+  };
+
+  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
+    const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
+    const radiusDeg = 0.0015 + attempt * 0.001;
+    const latDelta = Math.cos(angle) * radiusDeg;
+    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    return { lat: lat + latDelta, lng: lng + lngDelta };
+  };
 
   const handleShare = async () => {
     try {
@@ -57,16 +110,38 @@ export default function ResultsScreen() {
 
   const handleRescan = async () => {
     if (!midpoint) return;
+    if (rescanCount >= MAX_RESCANS_PER_SEARCH) return;
 
     setIsRescanning(true);
     try {
-      const refreshed = await api.getPlaces(midpoint.lat, midpoint.lng);
-      setCurrentPlaces(refreshed);
+      const seed = Date.now();
+      const current = currentPlaces;
+
+      let pool: typeof currentPlaces = [];
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const coords =
+          attempt === 0
+            ? { lat: midpoint.lat, lng: midpoint.lng }
+            : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
+        // eslint-disable-next-line no-await-in-loop
+        const batch = await api.getPlaces(coords.lat, coords.lng);
+        pool = pool.concat(batch);
+
+        const next = pickFiveUnique(pool, current, seed);
+        const currentKeys = new Set(current.map(placeKey));
+        if (next.length === 5 && next.some((p) => !currentKeys.has(placeKey(p)))) {
+          setCurrentPlaces(next);
+          break;
+        }
+        if (attempt === 3) setCurrentPlaces(pickFiveUnique(pool, current, seed));
+      }
+
+      setRescanCount((c) => c + 1);
 
       track('places_rescanned', {
         locationA,
         locationB,
-        placesCount: refreshed.length,
+        placesCount: 5,
         source: 'results_rescan',
       });
     } catch {
@@ -167,10 +242,16 @@ export default function ResultsScreen() {
               variant="primary"
             />
             <MidloButton
-              title={isRescanning ? 'Finding new options…' : 'See different options'}
+              title={
+                isRescanning
+                  ? 'Finding new options…'
+                  : rescanCount >= MAX_RESCANS_PER_SEARCH
+                    ? 'Try adjusting your locations'
+                    : 'See different options'
+              }
               onPress={handleRescan}
               variant="secondary"
-              disabled={isRescanning}
+              disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
             />
           </View>
 
