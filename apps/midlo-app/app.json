@@ -1,8 +1,34 @@
 {
   "expo": {
-    "name": "midlo-app",
-    "slug": "midlo-app",
-    "version": "1.0.0",
-    "sdkVersion": "54.0.0"
+    "name": "Midlo",
+    "slug": "midlo",
+    "scheme": "midlo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./src/assets/images/icon.png",
+    "splash": {
+      "image": "./src/assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2F855A"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.midlo.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "ai.midlo.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon-foreground.png",
+        "backgroundImage": "./src/assets/images/adaptive-icon-background.png",
+        "backgroundColor": "#2F855A"
+      }
+    }
   }
 }
