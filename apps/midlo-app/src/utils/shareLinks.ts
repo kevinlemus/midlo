@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import type { Place } from "../services/api";
 
 function normalizeHttpsBaseUrl(raw: string): string | null {
   const trimmed = raw.trim();
@@ -32,10 +33,20 @@ export function webBaseUrl(): string {
   return "https://midlo.ai";
 }
 
-export function midpointShareUrl(locationA: string, locationB: string): string {
+export function midpointShareUrl(locationA: string, locationB: string, places?: Place[]): string {
   const u = new URL("/share/midpoint", webBaseUrl());
   if (locationA) u.searchParams.set("a", locationA);
   if (locationB) u.searchParams.set("b", locationB);
+  if (places?.length) {
+    const snapshot = places.slice(0, 5).map((p) => ({
+      placeId: p.placeId,
+      name: p.name,
+      distance: p.distance,
+      lat: p.lat,
+      lng: p.lng,
+    }));
+    u.searchParams.set("pl", JSON.stringify(snapshot));
+  }
   return u.toString();
 }
 

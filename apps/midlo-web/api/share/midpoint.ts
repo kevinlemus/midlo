@@ -110,13 +110,22 @@ export default async function handler(request: Request): Promise<Response> {
     shareUrl.searchParams.set(k, v);
   }
 
+  // Redirect real users to the app home *with* any extra params preserved (e.g. pl= snapshot).
+  const redirectTo = new URL("/", origin);
+  if (a) redirectTo.searchParams.set("a", a);
+  if (b) redirectTo.searchParams.set("b", b);
+  for (const [k, v] of url.searchParams.entries()) {
+    if (k === "a" || k === "b") continue;
+    redirectTo.searchParams.set(k, v);
+  }
+
   const html = renderHtml({
     title,
     description,
     imageUrl,
     canonicalUrl: canonicalUrl.toString(),
     shareUrl: shareUrl.toString(),
-    redirectTo: canonicalUrl.toString(),
+    redirectTo: redirectTo.toString(),
   });
 
   // Avoid caching user-provided address text for long periods.

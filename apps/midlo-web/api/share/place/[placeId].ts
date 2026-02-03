@@ -182,6 +182,8 @@ export default async function handler(request: Request): Promise<Response> {
   const placeId = segments[segments.length - 1] ?? "";
 
   const canonicalUrl = new URL(`/p/${encodeURIComponent(placeId)}`, origin);
+  const redirectTo = new URL(canonicalUrl.toString());
+  redirectTo.search = url.search;
   const shareUrl = new URL(
     `/share/place/${encodeURIComponent(placeId)}`,
     origin,
@@ -232,7 +234,7 @@ export default async function handler(request: Request): Promise<Response> {
     imageUrl,
     canonicalUrl: canonicalUrl.toString(),
     shareUrl: shareUrl.toString(),
-    redirectTo: canonicalUrl.toString(),
+    redirectTo: redirectTo.toString(),
   });
 
   // Allow caching briefly: place data changes rarely, but keep it fresh.

@@ -10,6 +10,10 @@ import { api } from "../services/api";
 import type { Place } from "../types";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "../services/analytics";
+import {
+  decodePlacesSnapshotParam,
+  encodePlacesSnapshotParam,
+} from "../utils/placesSnapshot";
 
 import midloLogo from "../assets/midlo_logo.png";
 
@@ -41,6 +45,7 @@ export default function Home() {
   useEffect(() => {
     const a = searchParams.get("a") ?? "";
     const b = searchParams.get("b") ?? "";
+    const snapshot = decodePlacesSnapshotParam(searchParams.get("pl"));
 
     const hasQuery = Boolean(a && b);
 
@@ -66,8 +71,14 @@ export default function Home() {
         setRescanCount(0);
         const mp = await api.getMidpoint(a, b);
         setMidpoint(mp);
-        const pl = await api.getPlaces(mp.lat, mp.lng);
-        setPlaces(pl.slice(0, 5));
+        if (snapshot?.length) {
+          setPlaces(snapshot);
+        } else {
+          const pl = await api.getPlaces(mp.lat, mp.lng);
+          const next = pl.slice(0, 5);
+          setPlaces(next);
+          setSearchParams({ a, b, pl: encodePlacesSnapshotParam(next) }, { replace: true });
+        }
 
         // Auto-scroll to results
         setTimeout(() => {
@@ -155,11 +166,12 @@ export default function Home() {
         placesCount: pl.length,
       });
 
+      const next = pl.slice(0, 5);
       setMidpoint(mp);
-      setPlaces(pl.slice(0, 5));
+      setPlaces(next);
 
-      // Update URL
-      setSearchParams({ a: aText, b: bText }, { replace: true });
+      // Update URL (persist the exact list too)
+      setSearchParams({ a: aText, b: bText, pl: encodePlacesSnapshotParam(next) }, { replace: true });
 
       // Scroll to results
       setTimeout(() => {
@@ -181,6 +193,7 @@ export default function Home() {
     const shareUrl = new URL("/share/midpoint", window.location.origin);
     if (aText) shareUrl.searchParams.set("a", aText);
     if (bText) shareUrl.searchParams.set("b", bText);
+    if (places.length) shareUrl.searchParams.set("pl", encodePlacesSnapshotParam(places));
 
     const urlString = shareUrl.toString();
 
@@ -227,6 +240,8 @@ export default function Home() {
       const seed = Date.now();
       const current = places;
 
+      let chosen: Place[] | null = null;
+
       let pool: Place[] = [];
       for (let attempt = 0; attempt < 4; attempt++) {
         const coords =
@@ -238,10 +253,21 @@ export default function Home() {
         pool = pool.concat(batch);
         const next = pickFiveUnique(pool, current, seed);
         if (next.length === 5 && next.some((p) => !new Set(current.map(placeKey)).has(placeKey(p)))) {
-          setPlaces(next);
+          chosen = next;
           break;
         }
-        if (attempt === 3) setPlaces(pickFiveUnique(pool, current, seed));
+        if (attempt === 3) chosen = pickFiveUnique(pool, current, seed);
+      }
+
+      if (chosen) {
+        setPlaces(chosen);
+        const a = aText || "";
+        const b = bText || "";
+        const nextParams: Record<string, string> = {};
+        if (a) nextParams.a = a;
+        if (b) nextParams.b = b;
+        nextParams.pl = encodePlacesSnapshotParam(chosen);
+        setSearchParams(nextParams, { replace: true });
       }
 
       setRescanCount((c) => c + 1);

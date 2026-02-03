@@ -89,7 +89,7 @@ export default function ResultsScreen() {
 
   const handleShare = async () => {
     try {
-      const url = midpointShareUrl(locationA, locationB);
+      const url = midpointShareUrl(locationA, locationB, currentPlaces);
 
       if (Platform.OS === 'ios') {
         await Share.share({ url });
@@ -117,6 +117,8 @@ export default function ResultsScreen() {
       const seed = Date.now();
       const current = currentPlaces;
 
+      let chosen: typeof currentPlaces | null = null;
+
       let pool: typeof currentPlaces = [];
       for (let attempt = 0; attempt < 4; attempt++) {
         const coords =
@@ -130,10 +132,16 @@ export default function ResultsScreen() {
         const next = pickFiveUnique(pool, current, seed);
         const currentKeys = new Set(current.map(placeKey));
         if (next.length === 5 && next.some((p) => !currentKeys.has(placeKey(p)))) {
-          setCurrentPlaces(next);
+          chosen = next;
           break;
         }
-        if (attempt === 3) setCurrentPlaces(pickFiveUnique(pool, current, seed));
+        if (attempt === 3) chosen = pickFiveUnique(pool, current, seed);
+      }
+
+      if (chosen) {
+        setCurrentPlaces(chosen);
+        // Keep route params in sync so navigating away/back (or remount) respects the rescan.
+        navigation.setParams({ places: chosen });
       }
 
       setRescanCount((c) => c + 1);

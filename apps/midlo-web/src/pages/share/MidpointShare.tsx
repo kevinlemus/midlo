@@ -16,8 +16,11 @@ export default function MidpointShare() {
 
   const target = (() => {
     const u = new URL("/", window.location.origin);
-    if (a) u.searchParams.set("a", a);
-    if (b) u.searchParams.set("b", b);
+    // Preserve any optional params (e.g. pl= snapshot of the current list).
+    for (const [k, v] of params.entries()) {
+      if (!k) continue;
+      u.searchParams.set(k, v);
+    }
     return u.toString();
   })();
 
