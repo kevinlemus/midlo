@@ -8,7 +8,8 @@ export default function ResultsPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  const MAX_RESCANS_PER_SEARCH = 3;
+  const MAX_RESCANS_PER_SEARCH = 5;
+  const TOTAL_BATCHES = MAX_RESCANS_PER_SEARCH + 1;
 
   const initialA = params.get("a") ?? "";
   const initialB = params.get("b") ?? "";
@@ -17,13 +18,29 @@ export default function ResultsPage() {
   const [locationB, setLocationB] = useState(initialB);
 
   const [midpoint, setMidpoint] = useState<Midpoint | null>(null);
-  const [places, setPlaces] = useState<Place[]>([]);
+  const [batches, setBatches] = useState<Place[][]>([]);
+  const [activeBatchIndex, setActiveBatchIndex] = useState(0);
+  const places = batches[activeBatchIndex] ?? [];
   const [isLoading, setIsLoading] = useState(false);
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
+  const seenPlaceKeysRef = useRef<Set<string>>(new Set());
+
+  const canGoPrev = activeBatchIndex > 0;
+  const canGoNext = activeBatchIndex < batches.length - 1;
+
+  const handlePrevBatch = () => {
+    if (!canGoPrev) return;
+    setActiveBatchIndex((i) => Math.max(0, i - 1));
+  };
+
+  const handleNextBatch = () => {
+    if (!canGoNext) return;
+    setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+  };
 
   const isDisabled = !locationA || !locationB || isLoading || isRescanning;
 
@@ -60,7 +77,9 @@ export default function ResultsPage() {
     const uniq: Place[] = [];
     const seen = new Set<string>();
 
-    for (const p of candidates) {
+    const randomized = shuffleWithSeed(candidates, seed);
+
+    for (const p of randomized) {
       const k = placeKey(p);
       if (excludeKeys.has(k)) continue;
       if (seen.has(k)) continue;
@@ -69,11 +88,7 @@ export default function ResultsPage() {
       if (uniq.length >= 5) break;
     }
 
-    if (uniq.length >= 5) return uniq;
-
-    // If backend returns the same 5 repeatedly, make the UI still change (stable + honest).
-    const shuffledFallback = shuffleWithSeed(exclude, seed).slice(0, 5);
-    return uniq.length ? [...uniq, ...shuffledFallback].slice(0, 5) : shuffledFallback;
+    return uniq;
   };
 
   const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
@@ -95,14 +110,19 @@ export default function ResultsPage() {
     setRescanCount(0);
     setError(null);
     setMidpoint(null);
-    setPlaces([]);
+    setBatches([]);
+    setActiveBatchIndex(0);
+    seenPlaceKeysRef.current = new Set();
 
     try {
       const mp = await api.getMidpoint(locationA, locationB);
       const nearby = await api.getPlaces(mp.lat, mp.lng);
 
       setMidpoint(mp);
-      setPlaces(nearby.slice(0, 5));
+      const first = nearby.slice(0, 5);
+      setBatches([first]);
+      setActiveBatchIndex(0);
+      seenPlaceKeysRef.current = new Set(first.map(placeKey));
 
       track("midpoint_searched", {
         locationA,
@@ -134,32 +154,35 @@ export default function ResultsPage() {
 
     try {
       const seed = Date.now();
-      const current = places;
+      const current = batches[batches.length - 1] ?? places;
+      const seenKeys = new Set(seenPlaceKeysRef.current);
 
       let pool: Place[] = [];
       // Try a few small jitters around the midpoint to encourage variety.
-      for (let attempt = 0; attempt < 4; attempt++) {
+      for (let attempt = 0; attempt < 8; attempt++) {
         const coords = attempt === 0 ? { lat: midpoint.lat, lng: midpoint.lng } : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
         // eslint-disable-next-line no-await-in-loop
         const batch = await api.getPlaces(coords.lat, coords.lng);
         pool = pool.concat(batch);
-        const next = pickFiveUnique(pool, current, seed);
-        if (next.length === 5 && next.some((p) => !new Set(current.map(placeKey)).has(placeKey(p)))) {
-          setPlaces(next);
-          break;
+        const next = pickFiveUnique(pool, current, seed).filter((p) => !seenKeys.has(placeKey(p)));
+        if (next.length >= 5) {
+          const chosen = next.slice(0, 5);
+          const nextIndex = batches.length;
+          setBatches((prev) => [...prev, chosen]);
+          setActiveBatchIndex(nextIndex);
+          for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
+          setRescanCount((c) => c + 1);
+          track("places_rescanned" as Parameters<typeof track>[0], {
+            locationA,
+            locationB,
+            placesCount: 5,
+            source: "results_rescan",
+          });
+          return;
         }
-        // keep looping for a better set
-        if (attempt === 3) setPlaces(pickFiveUnique(pool, current, seed));
       }
 
-      setRescanCount((c) => c + 1);
-
-      track("places_rescanned" as Parameters<typeof track>[0], {
-        locationA,
-        locationB,
-        placesCount: 5,
-        source: "results_rescan",
-      });
+      setError("No more unique options nearby. Try adjusting your locations.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn’t refresh options. Try again.");
     } finally {
@@ -394,24 +417,77 @@ export default function ResultsPage() {
                   Nearby options
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleRescanPlaces}
-                  disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
-                  className="midlo-button midlo-button-secondary"
+                <div
                   style={{
-                    padding: "6px 12px",
-                    fontSize: "var(--font-size-caption)",
-                    borderRadius: "var(--radius-pill)",
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--space-xs)",
+                    justifyContent: "flex-end",
+                    flexWrap: "wrap",
                   }}
                 >
-                  {isRescanning
-                    ? "Finding new options…"
-                    : rescanCount >= MAX_RESCANS_PER_SEARCH
-                      ? "Try adjusting your locations"
-                      : "See different options"}
-                </button>
+                  <button
+                    type="button"
+                    onClick={handlePrevBatch}
+                    disabled={!canGoPrev}
+                    className="midlo-button midlo-button-secondary"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "var(--font-size-caption)",
+                      borderRadius: "var(--radius-pill)",
+                      whiteSpace: "nowrap",
+                      opacity: canGoPrev ? 1 : 0.6,
+                    }}
+                  >
+                    Previous
+                  </button>
+
+                  <div
+                    style={{
+                      fontSize: "var(--font-size-caption)",
+                      color: "var(--color-muted)",
+                      whiteSpace: "nowrap",
+                      padding: "0 6px",
+                    }}
+                  >
+                    Batch {Math.min(activeBatchIndex + 1, TOTAL_BATCHES)} of {TOTAL_BATCHES}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleNextBatch}
+                    disabled={!canGoNext}
+                    className="midlo-button midlo-button-secondary"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "var(--font-size-caption)",
+                      borderRadius: "var(--radius-pill)",
+                      whiteSpace: "nowrap",
+                      opacity: canGoNext ? 1 : 0.6,
+                    }}
+                  >
+                    Next
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleRescanPlaces}
+                    disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
+                    className="midlo-button midlo-button-secondary"
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "var(--font-size-caption)",
+                      borderRadius: "var(--radius-pill)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {isRescanning
+                      ? "Finding new options…"
+                      : rescanCount >= MAX_RESCANS_PER_SEARCH
+                        ? "Try adjusting your locations"
+                        : "See different options"}
+                  </button>
+                </div>
               </div>
 
               <div

@@ -21,13 +21,16 @@ export default function Home() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const MAX_RESCANS_PER_SEARCH = 3;
+  const MAX_RESCANS_PER_SEARCH = 5;
+  const TOTAL_BATCHES = MAX_RESCANS_PER_SEARCH + 1;
 
   const [aText, setAText] = useState("");
   const [bText, setBText] = useState("");
 
   const [midpoint, setMidpoint] = useState<null | { lat: number; lng: number }>(null);
-  const [places, setPlaces] = useState<Place[]>([]);
+  const [batches, setBatches] = useState<Place[][]>([]);
+  const [activeBatchIndex, setActiveBatchIndex] = useState(0);
+  const places = batches[activeBatchIndex] ?? [];
 
   const [isLoading, setIsLoading] = useState(false);
   const [isRescanning, setIsRescanning] = useState(false);
@@ -39,6 +42,7 @@ export default function Home() {
   // Scroll target for results
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const fromQueryRef = useRef(false);
+  const seenPlaceKeysRef = useRef<Set<string>>(new Set());
 
   // ⭐ On load: if URL has ?a= & ?b=, load results + scroll.
   // If URL has NO params, clear everything (fresh home).
@@ -54,8 +58,10 @@ export default function Home() {
       setAText("");
       setBText("");
       setMidpoint(null);
-      setPlaces([]);
+      setBatches([]);
+      setActiveBatchIndex(0);
       setRescanCount(0);
+      seenPlaceKeysRef.current = new Set();
       return;
     }
 
@@ -72,11 +78,15 @@ export default function Home() {
         const mp = await api.getMidpoint(a, b);
         setMidpoint(mp);
         if (snapshot?.length) {
-          setPlaces(snapshot);
+          setBatches([snapshot]);
+          setActiveBatchIndex(0);
+          seenPlaceKeysRef.current = new Set(snapshot.map(placeKey));
         } else {
           const pl = await api.getPlaces(mp.lat, mp.lng);
           const next = pl.slice(0, 5);
-          setPlaces(next);
+          setBatches([next]);
+          setActiveBatchIndex(0);
+          seenPlaceKeysRef.current = new Set(next.map(placeKey));
           setSearchParams({ a, b, pl: encodePlacesSnapshotParam(next) }, { replace: true });
         }
 
@@ -134,8 +144,7 @@ export default function Home() {
 
     if (uniq.length >= 5) return uniq;
 
-    const shuffledFallback = shuffleWithSeed(exclude, seed).slice(0, 5);
-    return uniq.length ? [...uniq, ...shuffledFallback].slice(0, 5) : shuffledFallback;
+    return uniq;
   };
 
   const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
@@ -151,9 +160,11 @@ export default function Home() {
     if (isDisabled || isLoading) return;
     setIsLoading(true);
     setError(null);
-    setPlaces([]);
+    setBatches([]);
+    setActiveBatchIndex(0);
     setMidpoint(null);
     setRescanCount(0);
+    seenPlaceKeysRef.current = new Set();
     fromQueryRef.current = false;
 
     try {
@@ -168,7 +179,9 @@ export default function Home() {
 
       const next = pl.slice(0, 5);
       setMidpoint(mp);
-      setPlaces(next);
+      setBatches([next]);
+      setActiveBatchIndex(0);
+      seenPlaceKeysRef.current = new Set(next.map(placeKey));
 
       // Update URL (persist the exact list too)
       setSearchParams({ a: aText, b: bText, pl: encodePlacesSnapshotParam(next) }, { replace: true });
@@ -223,10 +236,25 @@ export default function Home() {
     setAText("");
     setBText("");
     setMidpoint(null);
-    setPlaces([]);
+    setBatches([]);
+    setActiveBatchIndex(0);
     setRescanCount(0);
+    seenPlaceKeysRef.current = new Set();
     setSearchParams({}, { replace: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const canGoPrev = activeBatchIndex > 0;
+  const canGoNext = activeBatchIndex < batches.length - 1;
+
+  const handlePrevBatch = () => {
+    if (!canGoPrev) return;
+    setActiveBatchIndex((i) => Math.max(0, i - 1));
+  };
+
+  const handleNextBatch = () => {
+    if (!canGoNext) return;
+    setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
   };
 
   // ⭐ Rescan nearby places (keep midpoint fixed, refresh vibes)
@@ -238,12 +266,13 @@ export default function Home() {
 
     try {
       const seed = Date.now();
-      const current = places;
+      const current = batches[batches.length - 1] ?? places;
+      const seenKeys = new Set(seenPlaceKeysRef.current);
 
       let chosen: Place[] | null = null;
 
       let pool: Place[] = [];
-      for (let attempt = 0; attempt < 4; attempt++) {
+      for (let attempt = 0; attempt < 8; attempt++) {
         const coords =
           attempt === 0
             ? { lat: midpoint.lat, lng: midpoint.lng }
@@ -251,16 +280,18 @@ export default function Home() {
         // eslint-disable-next-line no-await-in-loop
         const batch = await api.getPlaces(coords.lat, coords.lng);
         pool = pool.concat(batch);
-        const next = pickFiveUnique(pool, current, seed);
-        if (next.length === 5 && next.some((p) => !new Set(current.map(placeKey)).has(placeKey(p)))) {
-          chosen = next;
+        const next = pickFiveUnique(pool, current, seed).filter((p) => !seenKeys.has(placeKey(p)));
+        if (next.length >= 5) {
+          chosen = next.slice(0, 5);
           break;
         }
-        if (attempt === 3) chosen = pickFiveUnique(pool, current, seed);
       }
 
       if (chosen) {
-        setPlaces(chosen);
+        const nextIndex = batches.length;
+        setBatches((prev) => [...prev, chosen]);
+        setActiveBatchIndex(nextIndex);
+        for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
         const a = aText || "";
         const b = bText || "";
         const nextParams: Record<string, string> = {};
@@ -268,16 +299,18 @@ export default function Home() {
         if (b) nextParams.b = b;
         nextParams.pl = encodePlacesSnapshotParam(chosen);
         setSearchParams(nextParams, { replace: true });
+
+        setRescanCount((c) => c + 1);
+
+        track("places_rescanned" as Parameters<typeof track>[0], {
+          locationA: aText,
+          locationB: bText,
+          placesCount: 5,
+          source: fromQueryRef.current ? "query_params" : "inline",
+        });
+      } else {
+        setError("No more unique options nearby. Try a new search.");
       }
-
-      setRescanCount((c) => c + 1);
-
-      track("places_rescanned" as Parameters<typeof track>[0], {
-        locationA: aText,
-        locationB: bText,
-        placesCount: 5,
-        source: fromQueryRef.current ? "query_params" : "inline",
-      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
@@ -558,31 +591,90 @@ export default function Home() {
                 </div>
 
                 {midpoint && (
-                  <button
-                    type="button"
-                    onClick={handleRescan}
-                      disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
+                  <div
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: "var(--radius-pill)",
-                      border: "1px solid var(--color-accent)",
-                      backgroundColor: "var(--color-surface)",
-                      color: "var(--color-primary-dark)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "var(--space-xs)",
+                      justifyContent: "flex-end",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={handlePrevBatch}
+                      disabled={!canGoPrev}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-divider)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
+                        cursor: canGoPrev ? "pointer" : "default",
+                        fontSize: "var(--font-size-caption)",
+                        opacity: canGoPrev ? 1 : 0.6,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Previous
+                    </button>
+
+                    <div
+                      style={{
+                        fontSize: "var(--font-size-caption)",
+                        color: "var(--color-muted)",
+                        whiteSpace: "nowrap",
+                        padding: "0 6px",
+                      }}
+                    >
+                      Batch {Math.min(activeBatchIndex + 1, TOTAL_BATCHES)} of {TOTAL_BATCHES}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleNextBatch}
+                      disabled={!canGoNext}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-divider)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
+                        cursor: canGoNext ? "pointer" : "default",
+                        fontSize: "var(--font-size-caption)",
+                        opacity: canGoNext ? 1 : 0.6,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Next
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRescan}
+                      disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-accent)",
+                        backgroundColor: "var(--color-surface)",
+                        color: "var(--color-primary-dark)",
                         cursor:
                           isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH
                             ? "default"
                             : "pointer",
-                      fontSize: "var(--font-size-caption)",
+                        fontSize: "var(--font-size-caption)",
                         opacity: isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH ? 0.7 : 1,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {isRescanning
                         ? "Refreshing…"
                         : rescanCount >= MAX_RESCANS_PER_SEARCH
                           ? "Try adjusting your locations"
                           : "See different options"}
-                  </button>
+                    </button>
+                  </div>
                 )}
               </div>
 

@@ -377,7 +377,7 @@ export default function PlaceScreen() {
                       >
                         <Image
                           source={{ uri: placePhotoUrl(p.name, 600) }}
-                          style={{ width: '100%', height: '100%' }}
+                          style={{ width: '100%', height: '100%', backgroundColor: theme.colors.highlight }}
                           resizeMode="cover"
                         />
                       </Pressable>

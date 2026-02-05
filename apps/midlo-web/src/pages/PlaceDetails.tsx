@@ -254,6 +254,8 @@ export default function PlaceDetailsPage() {
                 <img
                   src={placePhotoUrl(hero, 1600)}
                   alt={details.name ?? "Place photo"}
+                  decoding="async"
+                  referrerPolicy="no-referrer"
                   style={{
                     width: "100%",
                     height: "100%",
@@ -291,13 +293,20 @@ export default function PlaceDetailsPage() {
                           : "var(--color-divider)"
                       }`,
                       padding: 0,
-                      backgroundColor: "var(--color-surface)",
+                      backgroundColor: "var(--color-highlight)",
                       cursor: "pointer",
                     }}
                   >
                     <img
                       src={placePhotoUrl(p.name, 600)}
                       alt={details.name ?? "Place photo"}
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        // If the photo fails to load, avoid a stark white box.
+                        e.currentTarget.style.display = "none";
+                      }}
                       style={{
                         width: "100%",
                         height: "100%",

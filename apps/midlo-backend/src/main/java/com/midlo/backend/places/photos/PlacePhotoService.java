@@ -14,7 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Arrays;
@@ -25,10 +29,20 @@ public class PlacePhotoService {
     private final boolean allowMockGoogle;
     private final RestTemplate restTemplate;
 
+    private static final Duration PHOTO_URI_TTL = Duration.ofHours(6);
+    private final ConcurrentHashMap<String, CachedPhotoUri> photoUriCache = new ConcurrentHashMap<>();
+
+    private record CachedPhotoUri(String uri, Instant expiresAt) {
+    }
+
     public PlacePhotoService(GoogleMapsProperties googleMapsProperties, Environment environment) {
         this.googleMapsProperties = googleMapsProperties;
         this.allowMockGoogle = Arrays.asList(environment.getActiveProfiles()).contains("local");
-        this.restTemplate = new RestTemplate();
+
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) Duration.ofSeconds(4).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(8).toMillis());
+        this.restTemplate = new RestTemplate(factory);
     }
 
     public String resolvePhotoUri(String name, Integer maxWidthPx, Integer maxHeightPx) {
@@ -57,6 +71,12 @@ public class PlacePhotoService {
 
         int w = (maxWidthPx == null || maxWidthPx <= 0) ? 1200 : Math.min(maxWidthPx, 2000);
         Integer h = (maxHeightPx == null || maxHeightPx <= 0) ? null : Math.min(maxHeightPx, 2000);
+
+        String cacheKey = trimmed + "|w=" + w + "|h=" + (h == null ? "" : h);
+        CachedPhotoUri cached = photoUriCache.get(cacheKey);
+        if (cached != null && cached.expiresAt().isAfter(Instant.now()) && cached.uri() != null && !cached.uri().isBlank()) {
+            return cached.uri();
+        }
 
         StringBuilder endpoint = new StringBuilder("https://places.googleapis.com/v1/")
                 .append(trimmed)
@@ -99,6 +119,8 @@ public class PlacePhotoService {
         if (photoUri == null || photoUri.isBlank()) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "Photo lookup did not return a photoUri");
         }
+
+        photoUriCache.put(cacheKey, new CachedPhotoUri(photoUri, Instant.now().plus(PHOTO_URI_TTL)));
 
         return photoUri;
     }

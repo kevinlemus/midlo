@@ -8,6 +8,29 @@ export const metadata: Metadata = {
   title: "Midlo — Meet in the middle",
   description:
     "Midlo finds fair, friendly midpoints between people so meeting up actually feels good.",
+  openGraph: {
+    title: "Midlo — Meet in the middle",
+    description:
+      "Midlo finds fair, friendly midpoints between people so meeting up actually feels good.",
+    url: "https://midlo.ai",
+    type: "website",
+    siteName: "Midlo",
+    images: [
+      {
+        url: "https://midlo.ai/og/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Midlo — Meet in the middle",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Midlo — Meet in the middle",
+    description:
+      "Midlo finds fair, friendly midpoints between people so meeting up actually feels good.",
+    images: ["https://midlo.ai/og/og.png"],
+  },
 };
 
 export default function RootLayout({
