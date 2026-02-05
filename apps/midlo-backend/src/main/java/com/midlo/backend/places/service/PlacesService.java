@@ -62,15 +62,25 @@ public class PlacesService {
 		final int baseRadiusMeters = 8000; // keep midpoint fairness; only small jitter applied per query
 		final Random random = new Random();
 
-		List<String> types = List.of("restaurant", "cafe", "bar", "food", "meal_takeaway", "meal_delivery");
-		List<String> keywords = List.of("restaurant", "food", "eat", "lunch", "dinner", "coffee");
+		// Keep this 100% on places:searchNearby (stable payload shape). places:searchText has been
+		// a frequent source of INVALID_ARGUMENT due to stricter request schema.
+		List<String> types = List.of(
+				"restaurant",
+				"cafe",
+				"bar",
+				"bakery",
+				"meal_takeaway",
+				"meal_delivery",
+				"park",
+				"tourist_attraction",
+				"movie_theater",
+				"bowling_alley",
+				"museum",
+				"shopping_mall");
 
 		List<QuerySpec> queryPlan = new ArrayList<>();
 		for (String type : types) {
 			queryPlan.add(QuerySpec.nearbyType(type));
-		}
-		for (String keyword : keywords) {
-			queryPlan.add(QuerySpec.textKeyword(keyword));
 		}
 		Collections.shuffle(queryPlan, random);
 
@@ -238,7 +248,7 @@ public class PlacesService {
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("X-Goog-Api-Key", apiKey);
 		headers.set("X-Goog-FieldMask",
-				"places.id,places.displayName,places.location,places.formattedAddress,places.rating,nextPageToken");
+				"places.id,places.displayName,places.location,places.formattedAddress,places.rating");
 
 		Map<String, Object> body = new HashMap<>();
 		body.put("textQuery", keyword);
