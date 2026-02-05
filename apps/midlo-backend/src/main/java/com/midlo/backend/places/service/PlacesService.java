@@ -56,7 +56,8 @@ public class PlacesService {
 
 		// Goal: provide enough unique options for 6 batches × 5 places = 30.
 		final int targetUniquePlaces = 30;
-		final int minRawPoolTarget = 60; // ensures we can still reach 30 after filtering/dedup
+		// Keep latency bounded: build variety from multiple queries, but cap total calls.
+		final int maxQueries = 8;
 		final double minRating = 2.5;
 		final int baseRadiusMeters = 8000; // keep midpoint fairness; only small jitter applied per query
 		final Random random = new Random();
@@ -74,10 +75,13 @@ public class PlacesService {
 		Collections.shuffle(queryPlan, random);
 
 		Map<String, Candidate> byPlaceId = new HashMap<>();
-		List<Candidate> raw = new ArrayList<>();
 		ApiException lastFailure = null;
+		int queriesRun = 0;
 
 		for (QuerySpec spec : queryPlan) {
+			if (queriesRun >= maxQueries) {
+				break;
+			}
 			int jitteredRadius = jitterRadiusMeters(baseRadiusMeters, random);
 			FetchResult first;
 			try {
@@ -89,37 +93,12 @@ public class PlacesService {
 				lastFailure = e;
 				continue;
 			}
-			raw.addAll(first.candidates);
+			queriesRun++;
 			for (Candidate c : first.candidates) {
 				byPlaceId.putIfAbsent(c.placeId, c);
 			}
 
-			// For each query, follow pagination token when available.
-			String nextToken = first.nextPageToken;
-
-			int pages = 1;
-			while (nextToken != null && !nextToken.isBlank() && pages < 3
-					&& (raw.size() < minRawPoolTarget || countHighQualityUnique(byPlaceId.values(), minRating) < targetUniquePlaces)) {
-				pages++;
-				sleepForPaginationToken();
-				FetchResult next;
-				try {
-					next = switch (spec.kind) {
-						case NEARBY_TYPE -> fetchNearby(lat, lng, jitteredRadius, spec.value, apiKey, nextToken);
-						case TEXT_KEYWORD -> fetchText(lat, lng, jitteredRadius, spec.value, apiKey, nextToken);
-					};
-				} catch (ApiException e) {
-					lastFailure = e;
-					break;
-				}
-				raw.addAll(next.candidates);
-				for (Candidate c : next.candidates) {
-					byPlaceId.putIfAbsent(c.placeId, c);
-				}
-				nextToken = next.nextPageToken;
-			}
-
-			if (raw.size() >= minRawPoolTarget && countHighQualityUnique(byPlaceId.values(), minRating) >= targetUniquePlaces) {
+			if (countHighQualityUnique(byPlaceId.values(), minRating) >= targetUniquePlaces) {
 				break;
 			}
 		}
