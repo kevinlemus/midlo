@@ -155,7 +155,7 @@ public class PlacesService {
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.set("X-Goog-Api-Key", apiKey);
 		headers.set("X-Goog-FieldMask",
-				"places.id,places.displayName,places.location,places.formattedAddress,places.rating,nextPageToken");
+				"places.id,places.displayName,places.location,places.formattedAddress,places.rating");
 
 		Map<String, Object> body = new HashMap<>();
 		body.put("includedTypes", List.of(type));
@@ -164,9 +164,7 @@ public class PlacesService {
 				"circle", Map.of(
 						"center", Map.of("latitude", lat, "longitude", lng),
 						"radius", radiusMeters)));
-		if (pageToken != null && !pageToken.isBlank()) {
-			body.put("pageToken", pageToken);
-		}
+		// places.searchNearby does not support pagination tokens.
 
 		ResponseEntity<Map<String, Object>> resp;
 		try {
@@ -188,7 +186,7 @@ public class PlacesService {
 		if (respBody == null) {
 			return new FetchResult(List.of(), null);
 		}
-		String nextPageToken = (respBody.get("nextPageToken") instanceof String t) ? t : null;
+		String nextPageToken = null;
 
 		Object placesObj = respBody.get("places");
 		if (!(placesObj instanceof List<?> placesList) || placesList.isEmpty()) {
