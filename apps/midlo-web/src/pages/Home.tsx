@@ -36,6 +36,7 @@ export default function Home() {
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<string | null>(null);
 
   const isDisabled = !aText || !bText;
 
@@ -62,6 +63,7 @@ export default function Home() {
       setActiveBatchIndex(0);
       setRescanCount(0);
       seenPlaceKeysRef.current = new Set();
+      setNoMoreOptionsMessage(null);
       return;
     }
 
@@ -75,6 +77,7 @@ export default function Home() {
         setIsLoading(true);
         setError(null);
         setRescanCount(0);
+        setNoMoreOptionsMessage(null);
         const mp = await api.getMidpoint(a, b);
         setMidpoint(mp);
         if (snapshot?.length) {
@@ -165,6 +168,7 @@ export default function Home() {
     setMidpoint(null);
     setRescanCount(0);
     seenPlaceKeysRef.current = new Set();
+    setNoMoreOptionsMessage(null);
     fromQueryRef.current = false;
 
     try {
@@ -240,21 +244,39 @@ export default function Home() {
     setActiveBatchIndex(0);
     setRescanCount(0);
     seenPlaceKeysRef.current = new Set();
+    setNoMoreOptionsMessage(null);
     setSearchParams({}, { replace: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const canGoPrev = activeBatchIndex > 0;
-  const canGoNext = activeBatchIndex < batches.length - 1;
+  const canGoForwardStored = activeBatchIndex < batches.length - 1;
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
+    setNoMoreOptionsMessage(null);
     setActiveBatchIndex((i) => Math.max(0, i - 1));
   };
 
-  const handleNextBatch = () => {
-    if (!canGoNext) return;
-    setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+  const handleSeeDifferentOptions = async () => {
+    if (!midpoint) return;
+
+    // If we already generated future batches, just navigate forward.
+    if (canGoForwardStored) {
+      setNoMoreOptionsMessage(null);
+      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+      return;
+    }
+
+    // Otherwise, generate the next batch (up to TOTAL_BATCHES).
+    if (batches.length < TOTAL_BATCHES) {
+      setNoMoreOptionsMessage(null);
+      await handleRescan();
+      return;
+    }
+
+    // Past the final batch.
+    setNoMoreOptionsMessage("Try adjusting your locations for more options.");
   };
 
   // ⭐ Rescan nearby places (keep midpoint fixed, refresh vibes)
@@ -594,86 +616,71 @@ export default function Home() {
                   <div
                     style={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: "var(--space-xs)",
-                      justifyContent: "flex-end",
-                      flexWrap: "wrap",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: "var(--space-xxs)",
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={handlePrevBatch}
-                      disabled={!canGoPrev}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "var(--radius-pill)",
-                        border: "1px solid var(--color-divider)",
-                        backgroundColor: "var(--color-surface)",
-                        color: "var(--color-primary-dark)",
-                        cursor: canGoPrev ? "pointer" : "default",
-                        fontSize: "var(--font-size-caption)",
-                        opacity: canGoPrev ? 1 : 0.6,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Previous
-                    </button>
-
                     <div
                       style={{
-                        fontSize: "var(--font-size-caption)",
-                        color: "var(--color-muted)",
-                        whiteSpace: "nowrap",
-                        padding: "0 6px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "var(--space-xs)",
+                        justifyContent: "flex-end",
+                        flexWrap: "wrap",
                       }}
                     >
-                      Batch {Math.min(activeBatchIndex + 1, TOTAL_BATCHES)} of {TOTAL_BATCHES}
+                      <button
+                        type="button"
+                        onClick={handlePrevBatch}
+                        disabled={!canGoPrev}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "var(--radius-pill)",
+                          border: "1px solid var(--color-divider)",
+                          backgroundColor: "var(--color-surface)",
+                          color: "var(--color-primary-dark)",
+                          cursor: canGoPrev ? "pointer" : "default",
+                          fontSize: "var(--font-size-caption)",
+                          opacity: canGoPrev ? 1 : 0.6,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Previous results
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleSeeDifferentOptions()}
+                        disabled={isRescanning}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "var(--radius-pill)",
+                          border: "1px solid var(--color-accent)",
+                          backgroundColor: "var(--color-surface)",
+                          color: "var(--color-primary-dark)",
+                          cursor: isRescanning ? "default" : "pointer",
+                          fontSize: "var(--font-size-caption)",
+                          opacity: isRescanning ? 0.7 : 1,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {isRescanning ? "Refreshing…" : "See different options"}
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleNextBatch}
-                      disabled={!canGoNext}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "var(--radius-pill)",
-                        border: "1px solid var(--color-divider)",
-                        backgroundColor: "var(--color-surface)",
-                        color: "var(--color-primary-dark)",
-                        cursor: canGoNext ? "pointer" : "default",
-                        fontSize: "var(--font-size-caption)",
-                        opacity: canGoNext ? 1 : 0.6,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Next
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleRescan}
-                      disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: "var(--radius-pill)",
-                        border: "1px solid var(--color-accent)",
-                        backgroundColor: "var(--color-surface)",
-                        color: "var(--color-primary-dark)",
-                        cursor:
-                          isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH
-                            ? "default"
-                            : "pointer",
-                        fontSize: "var(--font-size-caption)",
-                        opacity: isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH ? 0.7 : 1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {isRescanning
-                        ? "Refreshing…"
-                        : rescanCount >= MAX_RESCANS_PER_SEARCH
-                          ? "Try adjusting your locations"
-                          : "See different options"}
-                    </button>
+                    {noMoreOptionsMessage && (
+                      <div
+                        style={{
+                          fontSize: "var(--font-size-caption)",
+                          color: "var(--color-muted)",
+                          marginTop: "2px",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {noMoreOptionsMessage}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -45,6 +45,7 @@ export default function ResultsScreen() {
   const currentPlaces = batches[activeBatchIndex] ?? [];
   const [isRescanning, setIsRescanning] = React.useState(false);
   const [rescanCount, setRescanCount] = React.useState(0);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = React.useState<string | null>(null);
 
   const seenPlaceKeysRef = React.useRef<Set<string>>(new Set(places.slice(0, 5).map(placeKey)));
 
@@ -55,19 +56,34 @@ export default function ResultsScreen() {
     setActiveBatchIndex(0);
     seenPlaceKeysRef.current = new Set(first.map(placeKey));
     setRescanCount(0);
+    setNoMoreOptionsMessage(null);
   }, [midpoint?.lat, midpoint?.lng, locationA, locationB]);
 
   const canGoPrev = activeBatchIndex > 0;
-  const canGoNext = activeBatchIndex < batches.length - 1;
+  const canGoForwardStored = activeBatchIndex < batches.length - 1;
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
+    setNoMoreOptionsMessage(null);
     setActiveBatchIndex((i) => Math.max(0, i - 1));
   };
 
-  const handleNextBatch = () => {
-    if (!canGoNext) return;
-    setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+  const handleSeeDifferentOptions = async () => {
+    if (!midpoint) return;
+
+    if (canGoForwardStored) {
+      setNoMoreOptionsMessage(null);
+      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+      return;
+    }
+
+    if (batches.length < TOTAL_BATCHES) {
+      setNoMoreOptionsMessage(null);
+      await handleRescan();
+      return;
+    }
+
+    setNoMoreOptionsMessage('Try adjusting your locations for more options.');
   };
 
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
@@ -282,89 +298,61 @@ export default function ResultsScreen() {
               variant="primary"
             />
 
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Pressable
-                onPress={handlePrevBatch}
-                disabled={!canGoPrev}
-                style={({ pressed }) => [
-                  {
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: theme.radii.pill,
-                    borderWidth: 1,
-                    borderColor: theme.colors.divider,
-                    backgroundColor: theme.colors.surface,
-                    opacity: canGoPrev ? 1 : 0.6,
-                  },
-                  pressed && canGoPrev ? { backgroundColor: theme.colors.highlight } : null,
-                ]}
-              >
-                <Text
-                  style={{
-                    fontSize: theme.typography.caption,
-                    color: theme.colors.primaryDark,
-                    fontWeight: theme.typography.weight.medium as any,
-                  }}
-                >
-                  Previous
-                </Text>
-              </Pressable>
-
-              <Text
+            <View style={{ gap: theme.spacing.xs }}>
+              <View
                 style={{
-                  fontSize: theme.typography.caption,
-                  color: theme.colors.muted,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                 }}
               >
-                Batch {Math.min(activeBatchIndex + 1, TOTAL_BATCHES)} of {TOTAL_BATCHES}
-              </Text>
+                <Pressable
+                  onPress={handlePrevBatch}
+                  disabled={!canGoPrev}
+                  style={({ pressed }) => [
+                    {
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: theme.radii.pill,
+                      borderWidth: 1,
+                      borderColor: theme.colors.divider,
+                      backgroundColor: theme.colors.surface,
+                      opacity: canGoPrev ? 1 : 0.6,
+                    },
+                    pressed && canGoPrev ? { backgroundColor: theme.colors.highlight } : null,
+                  ]}
+                >
+                  <Text
+                    style={{
+                      fontSize: theme.typography.caption,
+                      color: theme.colors.primaryDark,
+                      fontWeight: theme.typography.weight.medium as any,
+                    }}
+                  >
+                    Previous results
+                  </Text>
+                </Pressable>
 
-              <Pressable
-                onPress={handleNextBatch}
-                disabled={!canGoNext}
-                style={({ pressed }) => [
-                  {
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: theme.radii.pill,
-                    borderWidth: 1,
-                    borderColor: theme.colors.divider,
-                    backgroundColor: theme.colors.surface,
-                    opacity: canGoNext ? 1 : 0.6,
-                  },
-                  pressed && canGoNext ? { backgroundColor: theme.colors.highlight } : null,
-                ]}
-              >
+                <MidloButton
+                  title={isRescanning ? 'Finding new options…' : 'See different options'}
+                  onPress={() => void handleSeeDifferentOptions()}
+                  variant="secondary"
+                  disabled={isRescanning}
+                />
+              </View>
+
+              {noMoreOptionsMessage ? (
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
-                    color: theme.colors.primaryDark,
-                    fontWeight: theme.typography.weight.medium as any,
+                    color: theme.colors.muted,
+                    textAlign: 'right',
                   }}
                 >
-                  Next
+                  {noMoreOptionsMessage}
                 </Text>
-              </Pressable>
+              ) : null}
             </View>
-
-            <MidloButton
-              title={
-                isRescanning
-                  ? 'Finding new options…'
-                  : rescanCount >= MAX_RESCANS_PER_SEARCH
-                    ? 'Try adjusting your locations'
-                    : 'See different options'
-              }
-              onPress={handleRescan}
-              variant="secondary"
-              disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
-            />
           </View>
 
           <View

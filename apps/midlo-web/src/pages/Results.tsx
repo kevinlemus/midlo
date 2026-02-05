@@ -25,21 +25,36 @@ export default function ResultsPage() {
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
 
   const canGoPrev = activeBatchIndex > 0;
-  const canGoNext = activeBatchIndex < batches.length - 1;
+  const canGoForwardStored = activeBatchIndex < batches.length - 1;
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
+    setNoMoreOptionsMessage(null);
     setActiveBatchIndex((i) => Math.max(0, i - 1));
   };
 
-  const handleNextBatch = () => {
-    if (!canGoNext) return;
-    setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+  const handleSeeDifferentOptions = async () => {
+    if (!midpoint) return;
+
+    if (canGoForwardStored) {
+      setNoMoreOptionsMessage(null);
+      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+      return;
+    }
+
+    if (batches.length < TOTAL_BATCHES) {
+      setNoMoreOptionsMessage(null);
+      await handleRescanPlaces();
+      return;
+    }
+
+    setNoMoreOptionsMessage("Try adjusting your locations for more options.");
   };
 
   const isDisabled = !locationA || !locationB || isLoading || isRescanning;
@@ -113,6 +128,7 @@ export default function ResultsPage() {
     setBatches([]);
     setActiveBatchIndex(0);
     seenPlaceKeysRef.current = new Set();
+    setNoMoreOptionsMessage(null);
 
     try {
       const mp = await api.getMidpoint(locationA, locationB);
@@ -420,73 +436,64 @@ export default function ResultsPage() {
                 <div
                   style={{
                     display: "flex",
-                    alignItems: "center",
-                    gap: "var(--space-xs)",
-                    justifyContent: "flex-end",
-                    flexWrap: "wrap",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    gap: "2px",
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={handlePrevBatch}
-                    disabled={!canGoPrev}
-                    className="midlo-button midlo-button-secondary"
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "var(--font-size-caption)",
-                      borderRadius: "var(--radius-pill)",
-                      whiteSpace: "nowrap",
-                      opacity: canGoPrev ? 1 : 0.6,
-                    }}
-                  >
-                    Previous
-                  </button>
-
                   <div
                     style={{
-                      fontSize: "var(--font-size-caption)",
-                      color: "var(--color-muted)",
-                      whiteSpace: "nowrap",
-                      padding: "0 6px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "var(--space-xs)",
+                      justifyContent: "flex-end",
+                      flexWrap: "wrap",
                     }}
                   >
-                    Batch {Math.min(activeBatchIndex + 1, TOTAL_BATCHES)} of {TOTAL_BATCHES}
+                    <button
+                      type="button"
+                      onClick={handlePrevBatch}
+                      disabled={!canGoPrev}
+                      className="midlo-button midlo-button-secondary"
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: "var(--font-size-caption)",
+                        borderRadius: "var(--radius-pill)",
+                        whiteSpace: "nowrap",
+                        opacity: canGoPrev ? 1 : 0.6,
+                      }}
+                    >
+                      Previous results
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleSeeDifferentOptions()}
+                      disabled={isRescanning}
+                      className="midlo-button midlo-button-secondary"
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: "var(--font-size-caption)",
+                        borderRadius: "var(--radius-pill)",
+                        whiteSpace: "nowrap",
+                        opacity: isRescanning ? 0.7 : 1,
+                      }}
+                    >
+                      {isRescanning ? "Finding new options…" : "See different options"}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleNextBatch}
-                    disabled={!canGoNext}
-                    className="midlo-button midlo-button-secondary"
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "var(--font-size-caption)",
-                      borderRadius: "var(--radius-pill)",
-                      whiteSpace: "nowrap",
-                      opacity: canGoNext ? 1 : 0.6,
-                    }}
-                  >
-                    Next
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleRescanPlaces}
-                    disabled={isRescanning || rescanCount >= MAX_RESCANS_PER_SEARCH}
-                    className="midlo-button midlo-button-secondary"
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "var(--font-size-caption)",
-                      borderRadius: "var(--radius-pill)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isRescanning
-                      ? "Finding new options…"
-                      : rescanCount >= MAX_RESCANS_PER_SEARCH
-                        ? "Try adjusting your locations"
-                        : "See different options"}
-                  </button>
+                  {noMoreOptionsMessage && (
+                    <div
+                      style={{
+                        fontSize: "var(--font-size-caption)",
+                        color: "var(--color-muted)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {noMoreOptionsMessage}
+                    </div>
+                  )}
                 </div>
               </div>
 
