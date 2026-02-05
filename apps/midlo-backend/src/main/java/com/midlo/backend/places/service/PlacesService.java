@@ -245,7 +245,9 @@ public class PlacesService {
 		Map<String, Object> body = new HashMap<>();
 		body.put("textQuery", keyword);
 		body.put("maxResultCount", 20);
-		body.put("locationRestriction", Map.of(
+		// places.searchText does NOT allow locationRestriction.circle (only rectangle).
+		// Use locationBias.circle and apply a strict distance filter client-side.
+		body.put("locationBias", Map.of(
 				"circle", Map.of(
 						"center", Map.of("latitude", lat, "longitude", lng),
 						"radius", radiusMeters)));
@@ -312,6 +314,9 @@ public class PlacesService {
 			Double rating = toDouble(ratingObj);
 
 			double dist = haversineMeters(lat, lng, pLat, pLng);
+			if (dist > radiusMeters) {
+				continue;
+			}
 			out.add(new Candidate(placeId, name, address, rating, pLat, pLng, dist));
 		}
 
