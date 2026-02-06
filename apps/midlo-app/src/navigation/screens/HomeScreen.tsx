@@ -55,16 +55,19 @@ export default function HomeScreen() {
     if (!scrollRef.current) return;
     if (!scrollViewHeight) return;
 
-    const marginTop = 24;
-    const marginBottom = 24;
+    const marginTop = 12;
+    const marginBottom = 12;
 
     // Absolute Y within ScrollView content.
     const fieldTop = cardYRef.current + formYRef.current + field.y;
     const fieldBottom = fieldTop + field.height;
 
     const visibleTop = scrollYRef.current + marginTop;
-    const visibleBottom =
-      scrollYRef.current + scrollViewHeight - keyboardHeight - marginBottom;
+    // IMPORTANT: Don't subtract keyboard height here.
+    // `KeyboardAvoidingView` already adjusts available space (Android: height shrinks;
+    // iOS: bottom padding increases). Subtracting keyboard height again causes
+    // the focused input to jump *too high* above the keyboard.
+    const visibleBottom = scrollYRef.current + scrollViewHeight - marginBottom;
 
     let nextY: number | null = null;
 
@@ -165,7 +168,9 @@ export default function HomeScreen() {
           }}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          // Let `KeyboardAvoidingView` own keyboard avoidance.
+          // Enabling iOS automatic insets here can double-apply keyboard spacing.
+          automaticallyAdjustKeyboardInsets={false}
           onLayout={(e: LayoutChangeEvent) => {
             setScrollViewHeight(e.nativeEvent.layout.height);
           }}
@@ -179,7 +184,7 @@ export default function HomeScreen() {
             alignItems: 'center',
             paddingHorizontal: theme.spacing.xl,
             paddingVertical: theme.spacing.xl,
-            paddingBottom: theme.spacing.xl * 2,
+            paddingBottom: keyboardOpen ? theme.spacing.xl : theme.spacing.xl * 2,
           }}
         >
           <View
