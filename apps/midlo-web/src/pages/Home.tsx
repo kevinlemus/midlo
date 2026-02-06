@@ -718,15 +718,15 @@ export default function Home() {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "stretch",
-                  gap: "var(--space-sm)",
-                  marginBottom: "var(--space-sm)",
+                  gap: "var(--space-md)",
+                  marginBottom: "var(--space-md)",
                 }}
               >
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    justifyContent: "flex-start",
                     gap: "var(--space-md)",
                   }}
                 >
@@ -748,7 +748,7 @@ export default function Home() {
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
-                      gap: 4,
+                      gap: 6,
                       flexShrink: 0,
                     }}
                   >
@@ -758,9 +758,9 @@ export default function Home() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: 6,
-                        padding: 6,
-                        height: 44,
+                        gap: 8,
+                        padding: 7,
+                        height: 46,
                         borderRadius: "var(--radius-pill)",
                         border: "1px solid var(--color-divider)",
                         backgroundColor: "var(--color-surface)",
@@ -776,8 +776,8 @@ export default function Home() {
                         disabled={!canGoPrev}
                         style={{
                           height: 32,
-                          minWidth: 64,
-                          padding: "0 10px",
+                          minWidth: "clamp(56px, 22vw, 76px)",
+                          padding: "0 clamp(10px, 3.2vw, 14px)",
                           borderRadius: "var(--radius-pill)",
                           border: "1px solid var(--color-divider)",
                           backgroundColor: "var(--color-surface)",
@@ -787,7 +787,8 @@ export default function Home() {
                           fontWeight: 600,
                           letterSpacing: 0.2,
                           opacity: canGoPrev ? 1 : 0.42,
-                          transition: "opacity 180ms ease",
+                          transition:
+                            "opacity 180ms ease, background-color 180ms ease, border-color 180ms ease",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -800,8 +801,8 @@ export default function Home() {
                         disabled={!canGoNextStored}
                         style={{
                           height: 32,
-                          minWidth: 64,
-                          padding: "0 10px",
+                          minWidth: "clamp(56px, 22vw, 76px)",
+                          padding: "0 clamp(10px, 3.2vw, 14px)",
                           borderRadius: "var(--radius-pill)",
                           border: "1px solid var(--color-divider)",
                           backgroundColor: "var(--color-surface)",
@@ -811,7 +812,8 @@ export default function Home() {
                           fontWeight: 600,
                           letterSpacing: 0.2,
                           opacity: canGoNextStored ? 1 : 0.42,
-                          transition: "opacity 180ms ease",
+                          transition:
+                            "opacity 180ms ease, background-color 180ms ease, border-color 180ms ease",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -824,8 +826,8 @@ export default function Home() {
                         disabled={!isOnLastBatch || !canRescanMore || isRescanning}
                         style={{
                           height: 32,
-                          minWidth: 112,
-                          padding: "0 10px",
+                          minWidth: "clamp(104px, 42vw, 148px)",
+                          padding: "0 clamp(10px, 3.2vw, 14px)",
                           borderRadius: "var(--radius-pill)",
                           border: "1px solid var(--color-accent)",
                           backgroundColor: "var(--color-surface)",
@@ -839,7 +841,8 @@ export default function Home() {
                           letterSpacing: 0.2,
                           opacity:
                             isOnLastBatch && canRescanMore && !isRescanning ? 1 : 0.42,
-                          transition: "opacity 180ms ease",
+                          transition:
+                            "opacity 180ms ease, background-color 180ms ease, border-color 180ms ease",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -851,6 +854,7 @@ export default function Home() {
                     <div
                       style={{
                         height: 20,
+                        marginTop: 2,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -862,6 +866,7 @@ export default function Home() {
                         style={{
                           fontSize: "var(--font-size-caption)",
                           color: "var(--color-muted)",
+                          lineHeight: 1.2,
                           whiteSpace: "nowrap",
                           textAlign: "center",
                           opacity:
@@ -870,6 +875,7 @@ export default function Home() {
                               ? 1
                               : 0,
                           transition: "opacity 180ms ease",
+                          willChange: "opacity",
                         }}
                       >
                         {isOnLastBatch && !canRescanMore
@@ -880,22 +886,25 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-              </div>
 
-              <div
-                style={{
-                  fontSize: "var(--font-size-caption)",
-                  color: "var(--color-muted)",
-                  marginBottom: "var(--space-sm)",
-                }}
-              >
-                A few places that make meeting in the middle actually feel good.
+                <div
+                  style={{
+                    fontSize: "var(--font-size-caption)",
+                    color: "var(--color-muted)",
+                    textAlign: "center",
+                    maxWidth: 520,
+                    margin: "0 auto",
+                  }}
+                >
+                  A few places that make meeting in the middle actually feel good.
+                </div>
               </div>
 
               <div
                 style={{
                   display: "grid",
                   gap: "var(--space-sm)",
+                  marginTop: "var(--space-sm)",
                   opacity: isRescanning ? 0.7 : 1,
                   pointerEvents: isRescanning ? "none" : "auto",
                 }}

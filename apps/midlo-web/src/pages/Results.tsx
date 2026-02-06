@@ -476,21 +476,23 @@ export default function ResultsPage() {
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  flexDirection: "column",
+                  alignItems: "stretch",
                   gap: "var(--space-md)",
-                  marginBottom: "var(--space-sm)",
+                  marginBottom: "var(--space-md)",
                 }}
               >
-                <div
-                  style={{
-                    fontSize: "var(--font-size-subheading)",
-                    color: "var(--color-primary-dark)",
-                    fontWeight: 500,
-                    lineHeight: 1.1,
-                  }}
-                >
-                  Nearby options
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <div
+                    style={{
+                      fontSize: "var(--font-size-subheading)",
+                      color: "var(--color-primary-dark)",
+                      fontWeight: 500,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    Nearby options
+                  </div>
                 </div>
 
                 {/* NAVIGATION CLUSTER */}
@@ -498,8 +500,9 @@ export default function ResultsPage() {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: "flex-end",
+                    alignItems: "center",
                     flexShrink: 0,
+                    gap: 6,
                   }}
                 >
                   {/* CARD-DECK CONTROLLER (stable, never shifts) */}
@@ -507,15 +510,17 @@ export default function ResultsPage() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 6,
-                      justifyContent: "flex-end",
-                      padding: 6,
-                      height: 44,
+                      justifyContent: "center",
+                      gap: 8,
+                      padding: 7,
+                      height: 46,
                       borderRadius: "var(--radius-pill)",
                       border: "1px solid var(--color-divider)",
                       backgroundColor: "var(--color-surface)",
                       boxShadow: "var(--shadow-card)",
                       flexWrap: "nowrap",
+                      width: "fit-content",
+                      maxWidth: "100%",
                     }}
                   >
                     {/* PREVIOUS */}
@@ -526,14 +531,14 @@ export default function ResultsPage() {
                       className="midlo-button midlo-button-secondary"
                       style={{
                         height: 32,
-                        minWidth: 72,
-                        padding: "0 12px",
+                        minWidth: "clamp(56px, 22vw, 76px)",
+                        padding: "0 clamp(10px, 3.2vw, 14px)",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
                         fontWeight: 600,
                         letterSpacing: 0.2,
                         opacity: canGoPrev ? 1 : 0.42,
-                        transition: "opacity 160ms ease, transform 160ms ease",
+                        transition: "opacity 180ms ease",
                       }}
                     >
                       Prev
@@ -547,14 +552,14 @@ export default function ResultsPage() {
                       className="midlo-button midlo-button-secondary"
                       style={{
                         height: 32,
-                        minWidth: 72,
-                        padding: "0 12px",
+                        minWidth: "clamp(56px, 22vw, 76px)",
+                        padding: "0 clamp(10px, 3.2vw, 14px)",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
                         fontWeight: 600,
                         letterSpacing: 0.2,
                         opacity: canGoNextStored ? 1 : 0.42,
-                        transition: "opacity 160ms ease, transform 160ms ease",
+                        transition: "opacity 180ms ease",
                       }}
                     >
                       Next
@@ -570,8 +575,8 @@ export default function ResultsPage() {
                       className="midlo-button midlo-button-secondary"
                       style={{
                         height: 32,
-                        minWidth: 128,
-                        padding: "0 14px",
+                        minWidth: "clamp(104px, 42vw, 148px)",
+                        padding: "0 clamp(10px, 3.2vw, 14px)",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
                         fontWeight: 600,
@@ -580,7 +585,7 @@ export default function ResultsPage() {
                           isOnLastBatch && canRescanMore && !isRescanning
                             ? 1
                             : 0.42,
-                        transition: "opacity 160ms ease, transform 160ms ease",
+                        transition: "opacity 180ms ease",
                       }}
                     >
                       {isRescanning ? "Refreshing…" : "New options"}
@@ -593,9 +598,9 @@ export default function ResultsPage() {
                       height: 20,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "flex-end",
+                      justifyContent: "center",
                       overflow: "hidden",
-                      marginTop: 4,
+                      width: "100%",
                     }}
                   >
                     <span
@@ -605,11 +610,24 @@ export default function ResultsPage() {
                         opacity: isOnLastBatch && !canRescanMore ? 1 : 0,
                         transition: "opacity 180ms ease",
                         whiteSpace: "nowrap",
+                        textAlign: "center",
+                        willChange: "opacity",
                       }}
                     >
                       {noMoreOptionsMessage ??
                         "Try adjusting your locations for more options."}
                     </span>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "var(--font-size-caption)",
+                      color: "var(--color-muted)",
+                      textAlign: "center",
+                      maxWidth: 520,
+                    }}
+                  >
+                    A few places that make meeting in the middle actually feel good.
                   </div>
                 </div>
               </div>
