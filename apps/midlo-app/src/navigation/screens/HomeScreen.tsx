@@ -6,9 +6,14 @@ import {
   View,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   Image,
   ScrollView,
+  UIManager,
+  type LayoutChangeEvent,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -32,16 +37,83 @@ export default function HomeScreen() {
   const [locationB, setLocationB] = useState('');
 
   const scrollRef = useRef<ScrollView | null>(null);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const scrollYRef = useRef(0);
+  const [scrollViewHeight, setScrollViewHeight] = useState(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardOpen = keyboardHeight > 0;
+  const focusedFieldRef = useRef<'A' | 'B' | null>(null);
+
+  const cardYRef = useRef(0);
+  const formYRef = useRef(0);
+  const fieldLayoutRef = useRef<{ A?: { y: number; height: number }; B?: { y: number; height: number } }>(
+    {},
+  );
+
+  const ensureFieldVisible = (key: 'A' | 'B') => {
+    const field = fieldLayoutRef.current[key];
+    if (!field) return;
+    if (!scrollRef.current) return;
+    if (!scrollViewHeight) return;
+
+    const marginTop = 24;
+    const marginBottom = 24;
+
+    // Absolute Y within ScrollView content.
+    const fieldTop = cardYRef.current + formYRef.current + field.y;
+    const fieldBottom = fieldTop + field.height;
+
+    const visibleTop = scrollYRef.current + marginTop;
+    const visibleBottom =
+      scrollYRef.current + scrollViewHeight - keyboardHeight - marginBottom;
+
+    let nextY: number | null = null;
+
+    if (fieldBottom > visibleBottom) {
+      nextY = scrollYRef.current + (fieldBottom - visibleBottom);
+    } else if (fieldTop < visibleTop) {
+      nextY = Math.max(0, fieldTop - marginTop);
+    }
+
+    if (nextY == null) return;
+    if (Math.abs(nextY - scrollYRef.current) < 2) return;
+
+    scrollRef.current.scrollTo({ y: nextY, animated: true });
+  };
 
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+    if (
+      Platform.OS === 'android' &&
+      typeof UIManager.setLayoutAnimationEnabledExperimental === 'function'
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent as any, (e: any) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      const h = typeof e?.endCoordinates?.height === 'number' ? e.endCoordinates.height : 0;
+      setKeyboardHeight(h);
+    });
+    const hideSub = Keyboard.addListener(hideEvent as any, () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setKeyboardHeight(0);
+    });
+
     return () => {
       showSub.remove();
       hideSub.remove();
     };
   }, []);
+
+  useEffect(() => {
+    // When the keyboard animates in/out, re-ensure the focused field is visible.
+    const key = focusedFieldRef.current;
+    if (!key) return;
+    requestAnimationFrame(() => ensureFieldVisible(key));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyboardHeight, scrollViewHeight]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +166,13 @@ export default function HomeScreen() {
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
           automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          onLayout={(e: LayoutChangeEvent) => {
+            setScrollViewHeight(e.nativeEvent.layout.height);
+          }}
+          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: keyboardOpen ? 'flex-start' : 'center',
@@ -103,7 +182,13 @@ export default function HomeScreen() {
             paddingBottom: theme.spacing.xl * 2,
           }}
         >
-          <MidloCard>
+          <View
+            onLayout={(e) => {
+              cardYRef.current = e.nativeEvent.layout.y;
+            }}
+            style={{ width: '100%' }}
+          >
+            <MidloCard>
             <View
               style={{
                 alignItems: 'center',
@@ -163,8 +248,20 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            <View style={{ gap: theme.spacing.lg }}>
-              <View>
+            <View
+              style={{ gap: theme.spacing.lg }}
+              onLayout={(e) => {
+                formYRef.current = e.nativeEvent.layout.y;
+              }}
+            >
+              <View
+                onLayout={(e) => {
+                  fieldLayoutRef.current.A = {
+                    y: e.nativeEvent.layout.y,
+                    height: e.nativeEvent.layout.height,
+                  };
+                }}
+              >
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
@@ -182,14 +279,20 @@ export default function HomeScreen() {
                   placeholder="Enter first location"
                   returnKeyType="next"
                   onFocus={() => {
-                    // Keep the dropdown usable without dismissing the keyboard.
-                    // If the card is partially off-screen, nudge it into view.
-                    scrollRef.current?.scrollTo({ y: 0, animated: true });
+                    focusedFieldRef.current = 'A';
+                    requestAnimationFrame(() => ensureFieldVisible('A'));
                   }}
                 />
               </View>
 
-              <View>
+              <View
+                onLayout={(e) => {
+                  fieldLayoutRef.current.B = {
+                    y: e.nativeEvent.layout.y,
+                    height: e.nativeEvent.layout.height,
+                  };
+                }}
+              >
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
@@ -207,11 +310,8 @@ export default function HomeScreen() {
                   placeholder="Enter second location"
                   returnKeyType="done"
                   onFocus={() => {
-                    // Ensure the second field is not covered by the keyboard.
-                    // Using scrollToEnd is reliable across iOS/Android.
-                    requestAnimationFrame(() => {
-                      scrollRef.current?.scrollToEnd({ animated: true });
-                    });
+                    focusedFieldRef.current = 'B';
+                    requestAnimationFrame(() => ensureFieldVisible('B'));
                   }}
                 />
               </View>
@@ -258,7 +358,8 @@ export default function HomeScreen() {
                 No accounts. No friction. Just a fair place to meet.
               </Text>
             </View>
-          </MidloCard>
+            </MidloCard>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
