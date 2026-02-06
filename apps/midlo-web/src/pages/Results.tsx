@@ -45,7 +45,6 @@ export default function ResultsPage() {
     if (initialA && initialB) {
       void handleFindMidpoint(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
@@ -452,12 +451,14 @@ export default function ResultsPage() {
                   Nearby options
                 </div>
 
+                {/* NAVIGATION CLUSTER */}
                 <div
                   style={{
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "flex-end",
-                    gap: 2,
+                    gap: "var(--space-xxs)",
+                    minHeight: "40px",
                   }}
                 >
                   <div
@@ -486,7 +487,7 @@ export default function ResultsPage() {
                       Previous results
                     </button>
 
-                    {/* NEXT (stored only) */}
+                    {/* NEXT */}
                     {canGoNextStored && (
                       <button
                         type="button"
@@ -503,7 +504,7 @@ export default function ResultsPage() {
                       </button>
                     )}
 
-                    {/* RESCAN (only on last batch) */}
+                    {/* RESCAN */}
                     {isOnLastBatch && canRescanMore && (
                       <button
                         type="button"
@@ -523,45 +524,54 @@ export default function ResultsPage() {
                     )}
                   </div>
 
-                  {/* INLINE MESSAGE */}
-                  {isOnLastBatch && !canRescanMore && (
-                    <div
-                      style={{
-                        fontSize: "var(--font-size-caption)",
-                        color: "var(--color-muted)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {noMoreOptionsMessage ?? "Try adjusting your locations for more options."}
-                    </div>
-                  )}
+                  {/* INLINE MESSAGE (reserved space, no layout shift) */}
+                  <div
+                    style={{
+                      height: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    {isOnLastBatch && !canRescanMore && (
+                      <span
+                        style={{
+                          fontSize: "var(--font-size-caption)",
+                          color: "var(--color-muted)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {noMoreOptionsMessage ?? "Try adjusting your locations for more options."}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
+              {/* PLACES LIST */}
               <div
                 style={{
-                  fontSize: "var(--font-size-caption)",
-                  color: "var(--color-muted)",
-                  marginBottom: "var(--space-md)",
+                  display: "grid",
+                  gap: "var(--space-sm)",
+                  marginTop: "var(--space-sm)",
                 }}
               >
-                A few places that make meeting in the middle actually feel good.
-              </div>
-
-              {/* LIST */}
-              <div style={{ display: "grid", gap: "var(--space-sm)" }}>
                 {places.map((p) => (
                   <button
-                    key={p.placeId}
+                    key={placeKey(p)}
                     type="button"
-                    onClick={() => navigate(`/p/${encodeURIComponent(p.placeId)}`)}
+                    onClick={() => {
+                      if (!p.placeId) return;
+                      track("place_opened", { placeId: p.placeId, source: "results" });
+                      navigate(`/p/${encodeURIComponent(p.placeId)}`);
+                    }}
                     style={{
                       textAlign: "left",
                       padding: "var(--space-md)",
                       borderRadius: "var(--radius-md)",
                       border: "1px solid var(--color-divider)",
                       backgroundColor: "var(--color-surface)",
-                      cursor: "pointer",
+                      cursor: p.placeId ? "pointer" : "default",
                       boxShadow: "var(--shadow-card)",
                     }}
                   >
@@ -570,7 +580,7 @@ export default function ResultsPage() {
                         fontSize: "var(--font-size-body)",
                         color: "var(--color-text)",
                         fontWeight: 500,
-                        marginBottom: "var(--space-xs)",
+                        marginBottom: "var(--space-xxs)",
                       }}
                     >
                       {p.name}
@@ -587,18 +597,22 @@ export default function ResultsPage() {
                 ))}
               </div>
 
-              {/* SHARE BUTTON */}
-              <button
-                type="button"
-                onClick={handleShareMidpoint}
-                className="midlo-button midlo-button-secondary"
+              {/* SHARE MIDPOINT & LIST */}
+              <div
                 style={{
                   marginTop: "var(--space-lg)",
-                  width: "100%",
+                  display: "flex",
+                  justifyContent: "flex-end",
                 }}
               >
-                Share this midpoint & list
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void handleShareMidpoint()}
+                  className="midlo-button midlo-button-secondary"
+                >
+                  Share this midpoint & list
+                </button>
+              </div>
             </div>
           )}
         </div>
