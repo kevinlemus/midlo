@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { track } from '../../services/analytics';
 import {
   Text,
@@ -8,8 +8,6 @@ import {
   Platform,
   Image,
   ScrollView,
-  findNodeHandle,
-  type TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -29,37 +27,6 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const [locationA, setLocationA] = useState('');
   const [locationB, setLocationB] = useState('');
-
-  const scrollRef = useRef<ScrollView | null>(null);
-  const inputARef = useRef<TextInput | null>(null);
-  const inputBRef = useRef<TextInput | null>(null);
-
-  const scrollInputIntoView = (inputRef: React.RefObject<TextInput | null>) => {
-    const scroll = scrollRef.current;
-    const input = inputRef.current;
-    if (!scroll || !input) return;
-
-    const responder = (scroll as any).getScrollResponder?.();
-    const inputHandle = findNodeHandle(input);
-    if (!responder || !inputHandle) return;
-
-    const extraOffset = 18;
-
-    // Delay slightly so this runs after the keyboard begins showing.
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        try {
-          responder.scrollResponderScrollNativeHandleToKeyboard(
-            inputHandle,
-            extraOffset,
-            true,
-          );
-        } catch {
-          // ignore
-        }
-      }, 10);
-    });
-  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,14 +69,11 @@ export default function HomeScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          ref={(r) => {
-            scrollRef.current = r;
-          }}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode="none"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: 'center',
@@ -196,11 +160,6 @@ export default function HomeScreen() {
                   onChangeText={setLocationA}
                   placeholder="Enter first location"
                   returnKeyType="next"
-                  inputRef={inputARef}
-                  onFocus={(e) => {
-                    scrollInputIntoView(inputARef);
-                    void e;
-                  }}
                 />
               </View>
 
@@ -221,11 +180,6 @@ export default function HomeScreen() {
                   onChangeText={setLocationB}
                   placeholder="Enter second location"
                   returnKeyType="done"
-                  inputRef={inputBRef}
-                  onFocus={(e) => {
-                    scrollInputIntoView(inputBRef);
-                    void e;
-                  }}
                 />
               </View>
 
