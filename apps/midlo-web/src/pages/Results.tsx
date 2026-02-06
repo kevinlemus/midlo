@@ -502,7 +502,7 @@ export default function ResultsPage() {
                     flexDirection: "column",
                     alignItems: "center",
                     flexShrink: 0,
-                    gap: 6,
+                    gap: "var(--space-sm)",
                   }}
                 >
                   {/* CARD-DECK CONTROLLER (stable, never shifts) */}
@@ -601,6 +601,7 @@ export default function ResultsPage() {
                       justifyContent: "center",
                       overflow: "hidden",
                       width: "100%",
+                      marginTop: "var(--space-xs)",
                     }}
                   >
                     <span
@@ -625,6 +626,7 @@ export default function ResultsPage() {
                       color: "var(--color-muted)",
                       textAlign: "center",
                       maxWidth: 520,
+                      marginTop: "var(--space-md)",
                     }}
                   >
                     A few places that make meeting in the middle actually feel good.

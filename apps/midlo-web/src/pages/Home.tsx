@@ -718,8 +718,8 @@ export default function Home() {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "stretch",
-                  gap: "var(--space-md)",
-                  marginBottom: "var(--space-md)",
+                  gap: "var(--space-lg)",
+                  marginBottom: "var(--space-lg)",
                 }}
               >
                 <div
@@ -748,7 +748,7 @@ export default function Home() {
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
-                      gap: 6,
+                      gap: "var(--space-sm)",
                       flexShrink: 0,
                     }}
                   >
@@ -854,7 +854,7 @@ export default function Home() {
                     <div
                       style={{
                         height: 20,
-                        marginTop: 2,
+                        marginTop: "var(--space-xs)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -904,7 +904,7 @@ export default function Home() {
                 style={{
                   display: "grid",
                   gap: "var(--space-sm)",
-                  marginTop: "var(--space-sm)",
+                  marginTop: "var(--space-md)",
                   opacity: isRescanning ? 0.7 : 1,
                   pointerEvents: isRescanning ? "none" : "auto",
                 }}
