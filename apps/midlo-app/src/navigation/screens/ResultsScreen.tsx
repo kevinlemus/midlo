@@ -7,6 +7,7 @@ import {
   Share,
   Image,
   Pressable,
+  Animated,
   Platform,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -151,6 +152,16 @@ export default function ResultsScreen() {
   const canGoNextStored = activeBatchIndex < lastBatchIndex;
   const isOnLastBatch = activeBatchIndex === lastBatchIndex;
   const canRescanMore = batches.length < TOTAL_BATCHES;
+
+  const shouldShowNoMoreMessage = isOnLastBatch && !canRescanMore;
+  const messageOpacity = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    Animated.timing(messageOpacity, {
+      toValue: shouldShowNoMoreMessage ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [messageOpacity, shouldShowNoMoreMessage]);
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
@@ -404,9 +415,7 @@ export default function ResultsScreen() {
           </View>
 
           {/* NAVIGATION BUTTONS */}
-          <View
-            style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}
-          >
+          <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
             <MidloButton
               title="View on map"
               onPress={() =>
@@ -414,104 +423,6 @@ export default function ResultsScreen() {
               }
               variant="primary"
             />
-
-            <View style={{ gap: theme.spacing.xs }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                {/* PREVIOUS */}
-                <Pressable
-                  onPress={handlePrevBatch}
-                  disabled={!canGoPrev}
-                  style={({ pressed }) => [
-                    {
-                      paddingVertical: 8,
-                      paddingHorizontal: 12,
-                      borderRadius: theme.radii.pill,
-                      borderWidth: 1,
-                      borderColor: theme.colors.divider,
-                      backgroundColor: theme.colors.surface,
-                      opacity: canGoPrev ? 1 : 0.6,
-                    },
-                    pressed && canGoPrev
-                      ? { backgroundColor: theme.colors.highlight }
-                      : null,
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontSize: theme.typography.caption,
-                      color: theme.colors.primaryDark,
-                      fontWeight: theme.typography.weight.medium as any,
-                    }}
-                  >
-                    Previous results
-                  </Text>
-                </Pressable>
-
-                {/* NEXT (stored only) */}
-                {canGoNextStored && (
-                  <Pressable
-                    onPress={handleNextBatch}
-                    style={({ pressed }) => [
-                      {
-                        paddingVertical: 8,
-                        paddingHorizontal: 12,
-                        borderRadius: theme.radii.pill,
-                        borderWidth: 1,
-                        borderColor: theme.colors.divider,
-                        backgroundColor: theme.colors.surface,
-                      },
-                      pressed
-                        ? { backgroundColor: theme.colors.highlight }
-                        : null,
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        fontSize: theme.typography.caption,
-                        color: theme.colors.primaryDark,
-                        fontWeight: theme.typography.weight.medium as any,
-                      }}
-                    >
-                      Next results
-                    </Text>
-                  </Pressable>
-                )}
-
-                {/* RESCAN (only on last batch) */}
-                {isOnLastBatch && canRescanMore && (
-                  <MidloButton
-                    title={
-                      isRescanning
-                        ? "Finding new options…"
-                        : "See different options"
-                    }
-                    onPress={() => void handleSeeDifferentOptions()}
-                    variant="secondary"
-                    disabled={isRescanning}
-                  />
-                )}
-              </View>
-
-              {/* INLINE MESSAGE */}
-              {isOnLastBatch && !canRescanMore && (
-                <Text
-                  style={{
-                    fontSize: theme.typography.caption,
-                    color: theme.colors.muted,
-                    textAlign: "right",
-                  }}
-                >
-                  {noMoreOptionsMessage ??
-                    "Try adjusting your locations for more options."}
-                </Text>
-              )}
-            </View>
           </View>
 
           {/* RESULTS LIST */}
@@ -522,25 +433,186 @@ export default function ResultsScreen() {
               paddingTop: theme.spacing.lg,
             }}
           >
-            <Text
-              style={{
-                fontSize: theme.typography.subheading,
-                color: theme.colors.primaryDark,
-                fontWeight: theme.typography.weight.medium as any,
-                marginBottom: theme.spacing.sm,
-              }}
-            >
-              Nearby options
-            </Text>
-            <Text
-              style={{
-                fontSize: theme.typography.caption,
-                color: theme.colors.muted,
-                marginBottom: theme.spacing.md,
-              }}
-            >
-              A few places that make meeting in the middle actually feel good.
-            </Text>
+            <View style={{ gap: theme.spacing.lg, marginBottom: theme.spacing.lg }}>
+              <Text
+                style={{
+                  fontSize: theme.typography.subheading,
+                  color: theme.colors.primaryDark,
+                  fontWeight: theme.typography.weight.medium as any,
+                  textAlign: "left",
+                }}
+              >
+                Nearby options
+              </Text>
+
+              {/* CENTERED NAV CLUSTER (stable, always visible) */}
+              <View style={{ gap: theme.spacing.sm, alignItems: "center" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: theme.spacing.xs,
+                    padding: theme.spacing.xs,
+                    height: 44,
+                    borderRadius: theme.radii.pill,
+                    borderWidth: 1,
+                    borderColor: theme.colors.divider,
+                    backgroundColor: theme.colors.surface,
+                    alignSelf: "center",
+                    width: "100%",
+                    maxWidth: 520,
+                    overflow: "hidden",
+                    ...theme.shadow.card,
+                  }}
+                >
+                  {/* PREV */}
+                  <Pressable
+                    onPress={handlePrevBatch}
+                    disabled={!canGoPrev}
+                    style={({ pressed }) => [
+                      {
+                        flexGrow: 1,
+                        flexBasis: 0,
+                        minWidth: 0,
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        borderRadius: theme.radii.pill,
+                        borderWidth: 1,
+                        borderColor: theme.colors.divider,
+                        backgroundColor: theme.colors.surface,
+                        opacity: canGoPrev ? 1 : 0.42,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                      pressed && canGoPrev
+                        ? { backgroundColor: theme.colors.highlight }
+                        : null,
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: theme.typography.caption,
+                        color: theme.colors.primaryDark,
+                        fontWeight: theme.typography.weight.medium as any,
+                      }}
+                    >
+                      Prev
+                    </Text>
+                  </Pressable>
+
+                  {/* NEXT */}
+                  <Pressable
+                    onPress={handleNextBatch}
+                    disabled={!canGoNextStored}
+                    style={({ pressed }) => [
+                      {
+                        flexGrow: 1,
+                        flexBasis: 0,
+                        minWidth: 0,
+                        paddingVertical: 8,
+                        paddingHorizontal: 10,
+                        borderRadius: theme.radii.pill,
+                        borderWidth: 1,
+                        borderColor: theme.colors.divider,
+                        backgroundColor: theme.colors.surface,
+                        opacity: canGoNextStored ? 1 : 0.42,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      },
+                      pressed && canGoNextStored
+                        ? { backgroundColor: theme.colors.highlight }
+                        : null,
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: theme.typography.caption,
+                        color: theme.colors.primaryDark,
+                        fontWeight: theme.typography.weight.medium as any,
+                      }}
+                    >
+                      Next
+                    </Text>
+                  </Pressable>
+
+                  {/* NEW OPTIONS */}
+                  <Pressable
+                    onPress={() => void handleSeeDifferentOptions()}
+                    disabled={!isOnLastBatch || !canRescanMore || isRescanning}
+                    style={({ pressed }) => {
+                      const enabled =
+                        isOnLastBatch && canRescanMore && !isRescanning;
+                      return [
+                        {
+                          flexGrow: 1.6,
+                          flexBasis: 0,
+                          minWidth: 0,
+                          paddingVertical: 8,
+                          paddingHorizontal: 10,
+                          borderRadius: theme.radii.pill,
+                          borderWidth: 1,
+                          borderColor: theme.colors.accent,
+                          backgroundColor: theme.colors.surface,
+                          opacity: enabled ? 1 : 0.42,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        },
+                        pressed && enabled
+                          ? { backgroundColor: theme.colors.highlight }
+                          : null,
+                      ];
+                    }}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: theme.typography.caption,
+                        color: theme.colors.primaryDark,
+                        fontWeight: theme.typography.weight.medium as any,
+                      }}
+                    >
+                      {isRescanning ? "Refreshing…" : "New options"}
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {/* MESSAGE ROW — fixed height, fades without shifting */}
+                <View
+                  style={{
+                    height: 20,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                  }}
+                >
+                  <Animated.Text
+                    style={{
+                      opacity: messageOpacity,
+                      fontSize: theme.typography.caption,
+                      color: theme.colors.muted,
+                      textAlign: "center",
+                    }}
+                  >
+                    {noMoreOptionsMessage ??
+                      "Try adjusting your locations for more options."}
+                  </Animated.Text>
+                </View>
+              </View>
+
+              <Text
+                style={{
+                  fontSize: theme.typography.caption,
+                  color: theme.colors.muted,
+                  textAlign: "center",
+                  marginTop: theme.spacing.md,
+                }}
+              >
+                A few places that make meeting in the middle actually feel good.
+              </Text>
+            </View>
 
             <View style={{ gap: theme.spacing.sm }}>
               {currentPlaces.map((p, idx) => (
