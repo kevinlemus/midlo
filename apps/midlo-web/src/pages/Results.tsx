@@ -26,7 +26,9 @@ export default function ResultsPage() {
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<string | null>(null);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<
+    string | null
+  >(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
@@ -66,7 +68,11 @@ export default function ResultsPage() {
     return copy;
   };
 
-  const pickFiveUnique = (candidates: Place[], exclude: Place[], seed: number) => {
+  const pickFiveUnique = (
+    candidates: Place[],
+    exclude: Place[],
+    seed: number,
+  ) => {
     const excludeKeys = new Set(exclude.map(placeKey));
     const uniq: Place[] = [];
     const seen = new Set<string>();
@@ -85,11 +91,18 @@ export default function ResultsPage() {
     return uniq;
   };
 
-  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
+  const jitterLatLng = (
+    lat: number,
+    lng: number,
+    seed: number,
+    attempt: number,
+  ) => {
     const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
     const radiusDeg = 0.0015 + attempt * 0.001;
     const latDelta = Math.cos(angle) * radiusDeg;
-    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const lngDelta =
+      (Math.sin(angle) * radiusDeg) /
+      Math.max(0.2, Math.cos((lat * Math.PI) / 180));
     return { lat: lat + latDelta, lng: lng + lngDelta };
   };
 
@@ -163,7 +176,9 @@ export default function ResultsPage() {
         }
       }, 120);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(
+        e instanceof Error ? e.message : "Something went wrong. Try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -218,7 +233,9 @@ export default function ResultsPage() {
 
       setNoMoreOptionsMessage("Try adjusting your locations for more options.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn’t refresh options. Try again.");
+      setError(
+        e instanceof Error ? e.message : "Couldn’t refresh options. Try again.",
+      );
     } finally {
       setIsRescanning(false);
     }
@@ -301,8 +318,9 @@ export default function ResultsPage() {
               marginBottom: "var(--space-lg)",
             }}
           >
-            Drop in two locations and we’ll find a friendly halfway spot that feels fair to both
-            sides—plus nearby places that actually feel good to meet at.
+            Drop in two locations and we’ll find a friendly halfway spot that
+            feels fair to both sides—plus nearby places that actually feel good
+            to meet at.
           </p>
 
           {/* INPUTS */}
@@ -385,7 +403,14 @@ export default function ResultsPage() {
         </div>
 
         {/* RIGHT COLUMN */}
-        <div ref={resultsRef}>
+        <div
+          ref={resultsRef}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-lg)",
+          }}
+        >
           {/* MAP PLACEHOLDER */}
           <div
             style={{
@@ -424,7 +449,8 @@ export default function ResultsPage() {
                   color: "var(--color-primary-dark)",
                 }}
               >
-                Midpoint · Lat {midpoint.lat.toFixed(4)} · Lng {midpoint.lng.toFixed(4)}
+                Midpoint · Lat {midpoint.lat.toFixed(4)} · Lng{" "}
+                {midpoint.lng.toFixed(4)}
               </span>
             </div>
           )}
@@ -513,7 +539,9 @@ export default function ResultsPage() {
                         opacity: isRescanning ? 0.7 : 1,
                       }}
                     >
-                      {isRescanning ? "Finding new options…" : "See different options"}
+                      {isRescanning
+                        ? "Finding new options…"
+                        : "See different options"}
                     </button>
                   )}
                 </div>
@@ -549,13 +577,16 @@ export default function ResultsPage() {
                   marginTop: "var(--space-sm)",
                 }}
               >
-                              {places.map((p) => (
+                {places.map((p) => (
                   <button
                     key={placeKey(p)}
                     type="button"
                     onClick={() => {
                       if (!p.placeId) return;
-                      track("place_opened", { placeId: p.placeId, source: "results" });
+                      track("place_opened", {
+                        placeId: p.placeId,
+                        source: "results",
+                      });
                       navigate(`/p/${encodeURIComponent(p.placeId)}`);
                     }}
                     style={{
@@ -619,7 +650,8 @@ export default function ResultsPage() {
                 textAlign: "center",
               }}
             >
-              Add two locations above and see where you should meet in the middle.
+              Add two locations above and see where you should meet in the
+              middle.
             </div>
           )}
         </div>
