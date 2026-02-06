@@ -432,119 +432,112 @@ export default function ResultsPage() {
           {/* RESULTS */}
           {places.length > 0 && (
             <div>
-              {/* HEADER + NAVIGATION */}
+              {/* HEADER */}
+              <div
+                style={{
+                  fontSize: "var(--font-size-subheading)",
+                  color: "var(--color-primary-dark)",
+                  fontWeight: 500,
+                  marginBottom: "var(--space-xs)",
+                }}
+              >
+                Nearby options
+              </div>
+
+              {/* NAVIGATION CLUSTER */}
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "var(--space-xs)",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  gap: "var(--space-xxs)",
+                  marginBottom: "var(--space-sm)",
+                  minHeight: "40px",
                 }}
               >
                 <div
                   style={{
-                    fontSize: "var(--font-size-subheading)",
-                    color: "var(--color-primary-dark)",
-                    fontWeight: 500,
-                  }}
-                >
-                  Nearby options
-                </div>
-
-                {/* NAVIGATION CLUSTER */}
-                <div
-                  style={{
                     display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    gap: "var(--space-xxs)",
-                    minHeight: "40px",
+                    alignItems: "center",
+                    gap: "var(--space-xs)",
+                    justifyContent: "flex-end",
+                    flexWrap: "wrap",
                   }}
                 >
-                  <div
+                  {/* PREVIOUS */}
+                  <button
+                    type="button"
+                    onClick={handlePrevBatch}
+                    disabled={!canGoPrev}
+                    className="midlo-button midlo-button-secondary"
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "var(--space-xs)",
-                      justifyContent: "flex-end",
-                      flexWrap: "wrap",
+                      padding: "6px 12px",
+                      fontSize: "var(--font-size-caption)",
+                      borderRadius: "var(--radius-pill)",
+                      whiteSpace: "nowrap",
+                      opacity: canGoPrev ? 1 : 0.6,
                     }}
                   >
-                    {/* PREVIOUS */}
+                    Previous results
+                  </button>
+
+                  {/* NEXT */}
+                  {canGoNextStored && (
                     <button
                       type="button"
-                      onClick={handlePrevBatch}
-                      disabled={!canGoPrev}
+                      onClick={handleNextBatch}
                       className="midlo-button midlo-button-secondary"
                       style={{
                         padding: "6px 12px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
                         whiteSpace: "nowrap",
-                        opacity: canGoPrev ? 1 : 0.6,
                       }}
                     >
-                      Previous results
+                      Next results
                     </button>
+                  )}
 
-                    {/* NEXT */}
-                    {canGoNextStored && (
-                      <button
-                        type="button"
-                        onClick={handleNextBatch}
-                        className="midlo-button midlo-button-secondary"
-                        style={{
-                          padding: "6px 12px",
-                          fontSize: "var(--font-size-caption)",
-                          borderRadius: "var(--radius-pill)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        Next results
-                      </button>
-                    )}
+                  {/* RESCAN */}
+                  {isOnLastBatch && canRescanMore && (
+                    <button
+                      type="button"
+                      onClick={() => void handleSeeDifferentOptions()}
+                      disabled={isRescanning}
+                      className="midlo-button midlo-button-secondary"
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: "var(--font-size-caption)",
+                        borderRadius: "var(--radius-pill)",
+                        whiteSpace: "nowrap",
+                        opacity: isRescanning ? 0.7 : 1,
+                      }}
+                    >
+                      {isRescanning ? "Finding new options…" : "See different options"}
+                    </button>
+                  )}
+                </div>
 
-                    {/* RESCAN */}
-                    {isOnLastBatch && canRescanMore && (
-                      <button
-                        type="button"
-                        onClick={() => void handleSeeDifferentOptions()}
-                        disabled={isRescanning}
-                        className="midlo-button midlo-button-secondary"
-                        style={{
-                          padding: "6px 12px",
-                          fontSize: "var(--font-size-caption)",
-                          borderRadius: "var(--radius-pill)",
-                          whiteSpace: "nowrap",
-                          opacity: isRescanning ? 0.7 : 1,
-                        }}
-                      >
-                        {isRescanning ? "Finding new options…" : "See different options"}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* INLINE MESSAGE (reserved space, no layout shift) */}
-                  <div
-                    style={{
-                      height: "20px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    {isOnLastBatch && !canRescanMore && (
-                      <span
-                        style={{
-                          fontSize: "var(--font-size-caption)",
-                          color: "var(--color-muted)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {noMoreOptionsMessage ?? "Try adjusting your locations for more options."}
-                      </span>
-                    )}
-                  </div>
+                {/* INLINE MESSAGE */}
+                <div
+                  style={{
+                    height: "20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  {isOnLastBatch && !canRescanMore && (
+                    <span
+                      style={{
+                        fontSize: "var(--font-size-caption)",
+                        color: "var(--color-muted)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Try adjusting your locations for more options.
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -556,7 +549,7 @@ export default function ResultsPage() {
                   marginTop: "var(--space-sm)",
                 }}
               >
-                {places.map((p) => (
+                              {places.map((p) => (
                   <button
                     key={placeKey(p)}
                     type="button"
@@ -613,6 +606,20 @@ export default function ResultsPage() {
                   Share this midpoint & list
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* EMPTY STATE */}
+          {!midpoint && !places.length && !isLoading && (
+            <div
+              style={{
+                marginTop: "var(--space-md)",
+                fontSize: "var(--font-size-caption)",
+                color: "var(--color-muted)",
+                textAlign: "center",
+              }}
+            >
+              Add two locations above and see where you should meet in the middle.
             </div>
           )}
         </div>

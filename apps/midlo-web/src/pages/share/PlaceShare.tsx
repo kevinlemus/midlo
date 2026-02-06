@@ -19,10 +19,10 @@ export default function PlaceShare() {
         setDetails({
           name: d.name,
           formattedAddress: d.formattedAddress,
-        }),
+        })
       )
       .catch(() => {
-        // Silent fail for preview; fall back to generic copy.
+        // Silent fail for preview
       });
   }, [placeId]);
 
@@ -34,25 +34,36 @@ export default function PlaceShare() {
     ? details.formattedAddress
     : "Find a friendly halfway spot that feels fair to both sides.";
 
-  const image = "/og/place.png";
+  // IMPORTANT: absolute URL
+  const image = "https://midlo.ai/og/place.png?v=2";
 
   const target = placeId
     ? new URL(`/p/${encodeURIComponent(placeId)}`, window.location.origin).toString()
     : window.location.origin;
 
   return (
-    <html>
+    <html lang="en">
       <head>
-        <title>{title}</title>
+        <meta charSet="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-        {/* Open Graph */}
-        <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
-        <meta property="og:image" content={image} />
-        <meta property="og:image:alt" content="Midlo place preview" />
+        <title>{title}</title>
+        <link rel="canonical" href={window.location.href} />
+
+        {/* OpenGraph */}
+        <meta property="og:locale" content="en_US" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Midlo" />
         <meta property="og:url" content={window.location.href} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+
+        <meta property="og:image" content={image} />
+        <meta property="og:image:secure_url" content={image} />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Midlo place preview" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -60,10 +71,10 @@ export default function PlaceShare() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={image} />
 
-        {/* Fallback meta description */}
+        {/* Fallback */}
         <meta name="description" content={description} />
 
-        {/* Instant redirect for humans tapping the link */}
+        {/* Instant redirect for humans */}
         <meta httpEquiv="refresh" content={`0;url=${target}`} />
       </head>
       <body />
