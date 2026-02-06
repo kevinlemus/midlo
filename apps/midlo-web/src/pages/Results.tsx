@@ -478,7 +478,8 @@ export default function ResultsPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: "var(--space-xs)",
+                  gap: "var(--space-md)",
+                  marginBottom: "var(--space-sm)",
                 }}
               >
                 <div
@@ -486,6 +487,7 @@ export default function ResultsPage() {
                     fontSize: "var(--font-size-subheading)",
                     color: "var(--color-primary-dark)",
                     fontWeight: 500,
+                    lineHeight: 1.1,
                   }}
                 >
                   Nearby options
@@ -497,17 +499,23 @@ export default function ResultsPage() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "flex-end",
-                    width: "100%",
-                    maxWidth: 260,
+                    flexShrink: 0,
                   }}
                 >
-                  {/* BUTTON ROW — fixed height */}
+                  {/* CARD-DECK CONTROLLER (stable, never shifts) */}
                   <div
                     style={{
                       display: "flex",
-                      gap: "6px",
+                      alignItems: "center",
+                      gap: 6,
                       justifyContent: "flex-end",
-                      height: 32,
+                      padding: 6,
+                      height: 44,
+                      borderRadius: "var(--radius-pill)",
+                      border: "1px solid var(--color-divider)",
+                      backgroundColor: "var(--color-surface)",
+                      boxShadow: "var(--shadow-card)",
+                      flexWrap: "nowrap",
                     }}
                   >
                     {/* PREVIOUS */}
@@ -517,11 +525,15 @@ export default function ResultsPage() {
                       disabled={!canGoPrev}
                       className="midlo-button midlo-button-secondary"
                       style={{
-                        padding: "4px 10px",
+                        height: 32,
+                        minWidth: 72,
+                        padding: "0 12px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
-                        opacity: canGoPrev ? 1 : 0.4,
-                        transition: "opacity 0.2s ease",
+                        fontWeight: 600,
+                        letterSpacing: 0.2,
+                        opacity: canGoPrev ? 1 : 0.42,
+                        transition: "opacity 160ms ease, transform 160ms ease",
                       }}
                     >
                       Prev
@@ -534,11 +546,15 @@ export default function ResultsPage() {
                       disabled={!canGoNextStored}
                       className="midlo-button midlo-button-secondary"
                       style={{
-                        padding: "4px 10px",
+                        height: 32,
+                        minWidth: 72,
+                        padding: "0 12px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
-                        opacity: canGoNextStored ? 1 : 0.4,
-                        transition: "opacity 0.2s ease",
+                        fontWeight: 600,
+                        letterSpacing: 0.2,
+                        opacity: canGoNextStored ? 1 : 0.42,
+                        transition: "opacity 160ms ease, transform 160ms ease",
                       }}
                     >
                       Next
@@ -553,28 +569,33 @@ export default function ResultsPage() {
                       }
                       className="midlo-button midlo-button-secondary"
                       style={{
-                        padding: "4px 10px",
+                        height: 32,
+                        minWidth: 128,
+                        padding: "0 14px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
+                        fontWeight: 600,
+                        letterSpacing: 0.2,
                         opacity:
                           isOnLastBatch && canRescanMore && !isRescanning
                             ? 1
-                            : 0.4,
-                        transition: "opacity 0.2s ease",
+                            : 0.42,
+                        transition: "opacity 160ms ease, transform 160ms ease",
                       }}
                     >
                       {isRescanning ? "Refreshing…" : "New options"}
                     </button>
                   </div>
 
-                  {/* MESSAGE ROW — fixed height, fades */}
+                  {/* MESSAGE ROW — fixed height, fades in/out without layout shift */}
                   <div
                     style={{
-                      height: 18,
+                      height: 20,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "flex-end",
                       overflow: "hidden",
+                      marginTop: 4,
                     }}
                   >
                     <span
@@ -582,7 +603,7 @@ export default function ResultsPage() {
                         fontSize: "var(--font-size-caption)",
                         color: "var(--color-muted)",
                         opacity: isOnLastBatch && !canRescanMore ? 1 : 0,
-                        transition: "opacity 0.25s ease",
+                        transition: "opacity 180ms ease",
                         whiteSpace: "nowrap",
                       }}
                     >
