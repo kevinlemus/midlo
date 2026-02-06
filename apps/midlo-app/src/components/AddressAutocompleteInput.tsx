@@ -5,15 +5,12 @@ import {
   Pressable,
   ActivityIndicator,
   Keyboard,
-  Platform,
   ScrollView,
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
   type TextInputProps,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from 'theme';
 import { api } from '../services/api';
@@ -33,16 +30,10 @@ export default function AddressAutocompleteInput({
   style,
   ...rest
 }: Props) {
-  const insets = useSafeAreaInsets();
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [suggestions, setSuggestions] = React.useState<AutocompleteSuggestion[]>([]);
-
-  const inputRowRef = React.useRef<View | null>(null);
-  const [inputHeight, setInputHeight] = React.useState(0);
-  const [inputWindowY, setInputWindowY] = React.useState<number | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
 
   const abortRef = React.useRef<AbortController | null>(null);
   const blurTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,39 +122,6 @@ export default function AddressAutocompleteInput({
     };
   }, []);
 
-  React.useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent as any, (e: any) => {
-      const h = typeof e?.endCoordinates?.height === 'number' ? e.endCoordinates.height : 0;
-      setKeyboardHeight(h);
-    });
-    const hideSub = Keyboard.addListener(hideEvent as any, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  const measureInput = React.useCallback(() => {
-    const node = inputRowRef.current;
-    if (!node || typeof (node as any).measureInWindow !== 'function') return;
-    (node as any).measureInWindow((_x: number, y: number) => {
-      setInputWindowY(y);
-    });
-  }, []);
-
-  React.useEffect(() => {
-    if (!open) return;
-    // Measure after the dropdown opens and after any keyboard transition.
-    const raf = requestAnimationFrame(() => measureInput());
-    return () => cancelAnimationFrame(raf);
-  }, [open, keyboardHeight, measureInput]);
-
   const pick = (s: AutocompleteSuggestion) => {
     Keyboard.dismiss();
     committedValueRef.current = (s.description ?? '').trim();
@@ -178,36 +136,9 @@ export default function AddressAutocompleteInput({
 
   const showDropdown = open && (loading || error || suggestions.length > 0);
 
-  const windowHeight = Dimensions.get('window').height;
-  const padding = 10;
-  const spaceAbove =
-    inputWindowY == null
-      ? 0
-      : Math.max(0, inputWindowY - insets.top - padding);
-  const spaceBelow =
-    inputWindowY == null
-      ? 0
-      : Math.max(
-          0,
-          windowHeight - keyboardHeight - (inputWindowY + inputHeight) - insets.bottom - padding,
-        );
-
-  const shouldRenderAbove = spaceBelow < 180 && spaceAbove > spaceBelow;
-  const rawMax = shouldRenderAbove ? spaceAbove : spaceBelow;
-  const maxHeight = Math.max(140, Math.min(260, rawMax || 260));
-
   return (
-    <View style={[styles.wrapper, showDropdown ? styles.wrapperOpen : null, style]}>
-      <View
-        ref={(r) => {
-          inputRowRef.current = r;
-        }}
-        style={styles.inputRow}
-        onLayout={(e) => {
-          setInputHeight(e.nativeEvent.layout.height);
-          measureInput();
-        }}
-      >
+    <View style={[styles.wrapper, style]}>
+      <View style={styles.inputRow}>
         <MidloInput
           {...rest}
           value={value}
@@ -219,7 +150,6 @@ export default function AddressAutocompleteInput({
             onChangeText(t);
           }}
           onFocus={(e) => {
-            measureInput();
             const nextOpen =
               value.trim().length >= 3 &&
               (!committedValueRef.current || value.trim() !== committedValueRef.current);
@@ -265,9 +195,6 @@ export default function AddressAutocompleteInput({
                   }),
                 },
               ],
-              maxHeight,
-              top: shouldRenderAbove ? undefined : inputHeight + 8,
-              bottom: shouldRenderAbove ? inputHeight + 8 : undefined,
             },
           ]}
         >
@@ -276,7 +203,7 @@ export default function AddressAutocompleteInput({
           <ScrollView
             keyboardShouldPersistTaps="always"
             nestedScrollEnabled
-            style={{ maxHeight }}
+            style={{ maxHeight: 260 }}
           >
             {suggestions.map((s) => (
               <Pressable
@@ -314,10 +241,6 @@ export default function AddressAutocompleteInput({
 const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
-    position: 'relative',
-  },
-  wrapperOpen: {
-    zIndex: 50,
   },
   inputRow: {
     position: 'relative',
@@ -335,17 +258,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dropdown: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    marginTop: 8,
     borderRadius: theme.radii.lg,
     borderWidth: 1,
     borderColor: theme.colors.divider,
     backgroundColor: theme.colors.surface,
     overflow: 'hidden',
-    zIndex: 100,
     ...theme.shadow.card,
-    elevation: 20,
   },
   row: {
     paddingVertical: 12,
