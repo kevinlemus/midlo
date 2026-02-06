@@ -37,6 +37,7 @@ export default function HomeScreen() {
   const fieldBRef = useRef<View | null>(null);
   const scrollYRef = useRef(0);
   const keyboardHeightRef = useRef(0);
+  const pendingScrollRef = useRef<React.RefObject<View | null> | null>(null);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -45,6 +46,16 @@ export default function HomeScreen() {
     const showSub = Keyboard.addListener(showEvent as any, (e: any) => {
       const h = typeof e?.endCoordinates?.height === 'number' ? e.endCoordinates.height : 0;
       keyboardHeightRef.current = h;
+
+      // If the user just focused a field and the keyboard is now appearing,
+      // perform the scroll at the right moment (after we know the keyboard height).
+      const pending = pendingScrollRef.current;
+      if (pending) {
+        pendingScrollRef.current = null;
+        requestAnimationFrame(() => {
+          scrollFieldIntoView(pending);
+        });
+      }
     });
     const hideSub = Keyboard.addListener(hideEvent as any, () => {
       keyboardHeightRef.current = 0;
@@ -65,7 +76,7 @@ export default function HomeScreen() {
       (node as any).measureInWindow((_x: number, y: number, _w: number, h: number) => {
         const screenHeight = Dimensions.get('window').height;
         const kb = keyboardHeightRef.current;
-        const padding = 14;
+        const padding = 18;
 
         const keyboardTop = screenHeight - kb;
         const fieldBottom = y + h;
@@ -78,6 +89,17 @@ export default function HomeScreen() {
         scroll.scrollTo({ y: nextY, animated: true });
       });
     });
+  };
+
+  const handleFocusField = (ref: React.RefObject<View | null>) => {
+    // If the keyboard is already visible, scroll immediately.
+    if (keyboardHeightRef.current > 0) {
+      scrollFieldIntoView(ref);
+      return;
+    }
+
+    // Otherwise, queue it so the keyboard show event scrolls it into place.
+    pendingScrollRef.current = ref;
   };
 
   const [isLoading, setIsLoading] = useState(false);
@@ -224,7 +246,7 @@ export default function HomeScreen() {
                   placeholder="Enter first location"
                   returnKeyType="next"
                   onFocus={(e) => {
-                    scrollFieldIntoView(fieldARef);
+                    handleFocusField(fieldARef);
                     void e;
                   }}
                 />
@@ -252,7 +274,7 @@ export default function HomeScreen() {
                   placeholder="Enter second location"
                   returnKeyType="done"
                   onFocus={(e) => {
-                    scrollFieldIntoView(fieldBRef);
+                    handleFocusField(fieldBRef);
                     void e;
                   }}
                 />
