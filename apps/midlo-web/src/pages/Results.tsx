@@ -247,16 +247,13 @@ export default function ResultsPage() {
       return;
     }
 
-    // Encode locations into the URL hash so previews stay short and clean.
-    const payload = { a: locationA, b: locationB };
-    const json = JSON.stringify(payload);
-    const base64 = btoa(json);
-    const token = encodeURIComponent(base64);
+    // IMPORTANT: share the server-rendered OG endpoint so Instagram/etc see proper meta tags.
+    const shareUrl = new URL("/api/share/midpoint", window.location.origin);
+    shareUrl.searchParams.set("a", locationA);
+    shareUrl.searchParams.set("b", locationB);
+    // We can omit pl here; the app will recompute places from a/b on open.
 
-    const url = new URL("/share/midpoint", window.location.origin);
-    url.hash = token;
-
-    const urlString = url.toString();
+    const urlString = shareUrl.toString();
 
     try {
       await navigator.clipboard.writeText(urlString);
@@ -573,7 +570,8 @@ export default function ResultsPage() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      Try adjusting your locations for more options.
+                      {noMoreOptionsMessage ??
+                        "Try adjusting your locations for more options."}
                     </span>
                   )}
                 </div>

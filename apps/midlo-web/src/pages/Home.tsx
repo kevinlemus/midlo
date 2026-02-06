@@ -27,7 +27,9 @@ export default function Home() {
   const [aText, setAText] = useState("");
   const [bText, setBText] = useState("");
 
-  const [midpoint, setMidpoint] = useState<null | { lat: number; lng: number }>(null);
+  const [midpoint, setMidpoint] = useState<null | { lat: number; lng: number }>(
+    null,
+  );
   const [batches, setBatches] = useState<Place[][]>([]);
   const [activeBatchIndex, setActiveBatchIndex] = useState(0);
   const places = batches[activeBatchIndex] ?? [];
@@ -36,7 +38,9 @@ export default function Home() {
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<string | null>(null);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<
+    string | null
+  >(null);
 
   const isDisabled = !aText || !bText;
 
@@ -94,8 +98,12 @@ export default function Home() {
             setMidpoint(parsed.midpoint);
             setBatches(parsed.batches);
             const max = Math.max(0, parsed.batches.length - 1);
-            setActiveBatchIndex(Math.max(0, Math.min(max, parsed.activeBatchIndex)));
-            setRescanCount(typeof parsed.rescanCount === "number" ? parsed.rescanCount : 0);
+            setActiveBatchIndex(
+              Math.max(0, Math.min(max, parsed.activeBatchIndex)),
+            );
+            setRescanCount(
+              typeof parsed.rescanCount === "number" ? parsed.rescanCount : 0,
+            );
             const allPlaces: Place[] = parsed.batches.flat();
             seenPlaceKeysRef.current = new Set(allPlaces.map(placeKey));
             setNoMoreOptionsMessage(null);
@@ -134,7 +142,10 @@ export default function Home() {
           setBatches([next]);
           setActiveBatchIndex(0);
           seenPlaceKeysRef.current = new Set(next.map(placeKey));
-          setSearchParams({ a, b, pl: encodePlacesSnapshotParam(next) }, { replace: true });
+          setSearchParams(
+            { a, b, pl: encodePlacesSnapshotParam(next) },
+            { replace: true },
+          );
         }
 
         setTimeout(() => {
@@ -145,7 +156,9 @@ export default function Home() {
           }
         }, 120);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+        setError(
+          e instanceof Error ? e.message : "Something went wrong. Try again.",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -190,7 +203,11 @@ export default function Home() {
     return copy;
   };
 
-  const pickFiveUnique = (candidates: Place[], exclude: Place[], seed: number) => {
+  const pickFiveUnique = (
+    candidates: Place[],
+    exclude: Place[],
+    seed: number,
+  ) => {
     const excludeKeys = new Set(exclude.map(placeKey));
     const uniq: Place[] = [];
     const seen = new Set<string>();
@@ -209,11 +226,18 @@ export default function Home() {
     return uniq;
   };
 
-  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
+  const jitterLatLng = (
+    lat: number,
+    lng: number,
+    seed: number,
+    attempt: number,
+  ) => {
     const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
     const radiusDeg = 0.0015 + attempt * 0.001;
     const latDelta = Math.cos(angle) * radiusDeg;
-    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const lngDelta =
+      (Math.sin(angle) * radiusDeg) /
+      Math.max(0.2, Math.cos((lat * Math.PI) / 180));
     return { lat: lat + latDelta, lng: lng + lngDelta };
   };
 
@@ -245,7 +269,10 @@ export default function Home() {
       setActiveBatchIndex(0);
       seenPlaceKeysRef.current = new Set(next.map(placeKey));
 
-      setSearchParams({ a: aText, b: bText, pl: encodePlacesSnapshotParam(next) }, { replace: true });
+      setSearchParams(
+        { a: aText, b: bText, pl: encodePlacesSnapshotParam(next) },
+        { replace: true },
+      );
 
       setTimeout(() => {
         if (resultsRef.current) {
@@ -255,17 +282,20 @@ export default function Home() {
         }
       }, 120);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(
+        e instanceof Error ? e.message : "Something went wrong. Try again.",
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleShare = async () => {
-    const shareUrl = new URL("/share/midpoint", window.location.origin);
+    const shareUrl = new URL("/api/share/midpoint", window.location.origin);
     if (aText) shareUrl.searchParams.set("a", aText);
     if (bText) shareUrl.searchParams.set("b", bText);
-    if (places.length) shareUrl.searchParams.set("pl", encodePlacesSnapshotParam(places));
+    if (places.length)
+      shareUrl.searchParams.set("pl", encodePlacesSnapshotParam(places));
 
     const urlString = shareUrl.toString();
 
@@ -278,7 +308,9 @@ export default function Home() {
           url: urlString,
         });
         return;
-      } catch {}
+      } catch {
+        // ignore share cancellation
+      }
     }
 
     try {
@@ -406,7 +438,9 @@ export default function Home() {
         setNoMoreOptionsMessage("Try adjusting your locations for more options.");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(
+        e instanceof Error ? e.message : "Something went wrong. Try again.",
+      );
     } finally {
       setIsRescanning(false);
     }
@@ -457,7 +491,6 @@ export default function Home() {
           >
             Meet in the middle
           </div>
-
           <img
             src={midloLogo}
             alt="Midlo"
