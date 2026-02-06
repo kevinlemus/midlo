@@ -1,10 +1,14 @@
 import React from 'react';
-import { TextInput, TextInputProps } from 'react-native';
+import { TextInput, type TextInputProps } from 'react-native';
 import { theme } from 'theme';
 
-export default function MidloInput(props: TextInputProps) {
+const MidloInput = React.forwardRef<TextInput, TextInputProps>(function MidloInput(
+  props,
+  ref,
+) {
   return (
     <TextInput
+      ref={ref}
       placeholderTextColor={theme.colors.muted}
       {...props}
       style={[
@@ -22,4 +26,6 @@ export default function MidloInput(props: TextInputProps) {
       ]}
     />
   );
-}
+});
+
+export default MidloInput;

@@ -4,14 +4,12 @@ import {
   Text,
   SafeAreaView,
   View,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Image,
   ScrollView,
-  Dimensions,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
+  findNodeHandle,
+  type TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,73 +31,34 @@ export default function HomeScreen() {
   const [locationB, setLocationB] = useState('');
 
   const scrollRef = useRef<ScrollView | null>(null);
-  const fieldARef = useRef<View | null>(null);
-  const fieldBRef = useRef<View | null>(null);
-  const scrollYRef = useRef(0);
-  const keyboardHeightRef = useRef(0);
-  const pendingScrollRef = useRef<React.RefObject<View | null> | null>(null);
+  const inputARef = useRef<TextInput | null>(null);
+  const inputBRef = useRef<TextInput | null>(null);
 
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent as any, (e: any) => {
-      const h = typeof e?.endCoordinates?.height === 'number' ? e.endCoordinates.height : 0;
-      keyboardHeightRef.current = h;
-
-      // If the user just focused a field and the keyboard is now appearing,
-      // perform the scroll at the right moment (after we know the keyboard height).
-      const pending = pendingScrollRef.current;
-      if (pending) {
-        pendingScrollRef.current = null;
-        requestAnimationFrame(() => {
-          scrollFieldIntoView(pending);
-        });
-      }
-    });
-    const hideSub = Keyboard.addListener(hideEvent as any, () => {
-      keyboardHeightRef.current = 0;
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  const scrollFieldIntoView = (ref: React.RefObject<View | null>) => {
-    const node = ref.current;
+  const scrollInputIntoView = (inputRef: React.RefObject<TextInput | null>) => {
     const scroll = scrollRef.current;
-    if (!node || !scroll || typeof (node as any).measureInWindow !== 'function') return;
+    const input = inputRef.current;
+    if (!scroll || !input) return;
 
+    const responder = (scroll as any).getScrollResponder?.();
+    const inputHandle = findNodeHandle(input);
+    if (!responder || !inputHandle) return;
+
+    const extraOffset = 18;
+
+    // Delay slightly so this runs after the keyboard begins showing.
     requestAnimationFrame(() => {
-      (node as any).measureInWindow((_x: number, y: number, _w: number, h: number) => {
-        const screenHeight = Dimensions.get('window').height;
-        const kb = keyboardHeightRef.current;
-        const padding = 18;
-
-        const keyboardTop = screenHeight - kb;
-        const fieldBottom = y + h;
-
-        // Only scroll if the field would be covered by the keyboard.
-        const overlap = fieldBottom + padding - keyboardTop;
-        if (overlap <= 0) return;
-
-        const nextY = Math.max(0, scrollYRef.current + overlap);
-        scroll.scrollTo({ y: nextY, animated: true });
-      });
+      setTimeout(() => {
+        try {
+          responder.scrollResponderScrollNativeHandleToKeyboard(
+            inputHandle,
+            extraOffset,
+            true,
+          );
+        } catch {
+          // ignore
+        }
+      }, 10);
     });
-  };
-
-  const handleFocusField = (ref: React.RefObject<View | null>) => {
-    // If the keyboard is already visible, scroll immediately.
-    if (keyboardHeightRef.current > 0) {
-      scrollFieldIntoView(ref);
-      return;
-    }
-
-    // Otherwise, queue it so the keyboard show event scrolls it into place.
-    pendingScrollRef.current = ref;
   };
 
   const [isLoading, setIsLoading] = useState(false);
@@ -151,10 +110,6 @@ export default function HomeScreen() {
           }}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
-          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-            scrollYRef.current = e.nativeEvent.contentOffset.y;
-          }}
-          scrollEventThrottle={16}
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: 'center',
@@ -224,11 +179,7 @@ export default function HomeScreen() {
             </View>
 
             <View style={{ gap: theme.spacing.lg }}>
-              <View
-                ref={(r) => {
-                  fieldARef.current = r;
-                }}
-              >
+              <View>
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
@@ -245,18 +196,15 @@ export default function HomeScreen() {
                   onChangeText={setLocationA}
                   placeholder="Enter first location"
                   returnKeyType="next"
+                  inputRef={inputARef}
                   onFocus={(e) => {
-                    handleFocusField(fieldARef);
+                    scrollInputIntoView(inputARef);
                     void e;
                   }}
                 />
               </View>
 
-              <View
-                ref={(r) => {
-                  fieldBRef.current = r;
-                }}
-              >
+              <View>
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
@@ -273,8 +221,9 @@ export default function HomeScreen() {
                   onChangeText={setLocationB}
                   placeholder="Enter second location"
                   returnKeyType="done"
+                  inputRef={inputBRef}
                   onFocus={(e) => {
-                    handleFocusField(fieldBRef);
+                    scrollInputIntoView(inputBRef);
                     void e;
                   }}
                 />

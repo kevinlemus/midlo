@@ -11,6 +11,7 @@ import {
   Easing,
   type TextInputProps,
 } from 'react-native';
+import type { TextInput } from 'react-native';
 
 import { theme } from 'theme';
 import { api } from '../services/api';
@@ -21,12 +22,14 @@ type Props = Omit<TextInputProps, 'onChangeText' | 'value'> & {
   value: string;
   onChangeText: (text: string) => void;
   onSelectSuggestion?: (s: AutocompleteSuggestion) => void;
+  inputRef?: React.Ref<TextInput>;
 };
 
 export default function AddressAutocompleteInput({
   value,
   onChangeText,
   onSelectSuggestion,
+  inputRef,
   style,
   ...rest
 }: Props) {
@@ -140,6 +143,7 @@ export default function AddressAutocompleteInput({
     <View style={[styles.wrapper, style]}>
       <View style={styles.inputRow}>
         <MidloInput
+          ref={inputRef as any}
           {...rest}
           value={value}
           onChangeText={(t) => {
