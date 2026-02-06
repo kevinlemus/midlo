@@ -1,29 +1,38 @@
-import React from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect } from "react";
 
 export default function MidpointShare() {
-  const [params] = useSearchParams();
-  const a = params.get("a") ?? "";
-  const b = params.get("b") ?? "";
-
   const title = "Meet in the middle • Midlo";
   const description =
-    a && b
-      ? `A fair place to meet between ${a} and ${b}.`
-      : "Find a friendly halfway point that feels fair to both sides.";
+    "Drop in two locations and we’ll find a friendly halfway spot that feels fair to both sides.";
 
-  // IMPORTANT: absolute URL
   const image = "https://midlo.ai/og/midpoint.png?v=2";
+  const pageUrl = "https://midlo.ai/share/midpoint";
 
-  // Redirect target for humans
-  const target = (() => {
-    const u = new URL("/", window.location.origin);
-    for (const [k, v] of params.entries()) {
-      if (!k) continue;
-      u.searchParams.set(k, v);
+  useEffect(() => {
+    try {
+      const hash = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash;
+
+      if (!hash) {
+        // No data, just send to home.
+        window.location.replace("/");
+        return;
+      }
+
+      const json = atob(decodeURIComponent(hash));
+      const payload = JSON.parse(json) as { a?: string; b?: string };
+
+      const url = new URL("/", window.location.origin);
+      if (payload.a) url.searchParams.set("a", payload.a);
+      if (payload.b) url.searchParams.set("b", payload.b);
+
+      window.location.replace(url.toString());
+    } catch {
+      // If anything goes wrong, just send them home.
+      window.location.replace("/");
     }
-    return u.toString();
-  })();
+  }, []);
 
   return (
     <html lang="en">
@@ -32,13 +41,13 @@ export default function MidpointShare() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         <title>{title}</title>
-        <link rel="canonical" href={window.location.href} />
+        <link rel="canonical" href={pageUrl} />
 
         {/* OpenGraph */}
         <meta property="og:locale" content="en_US" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Midlo" />
-        <meta property="og:url" content={window.location.href} />
+        <meta property="og:url" content={pageUrl} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
 
@@ -57,9 +66,6 @@ export default function MidpointShare() {
 
         {/* Fallback */}
         <meta name="description" content={description} />
-
-        {/* Instant redirect for humans */}
-        <meta httpEquiv="refresh" content={`0;url=${target}`} />
       </head>
       <body />
     </html>

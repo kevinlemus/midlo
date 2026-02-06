@@ -242,9 +242,19 @@ export default function ResultsPage() {
   };
 
   const handleShareMidpoint = async () => {
+    if (!locationA || !locationB) {
+      alert("Add both locations before sharing.");
+      return;
+    }
+
+    // Encode locations into the URL hash so previews stay short and clean.
+    const payload = { a: locationA, b: locationB };
+    const json = JSON.stringify(payload);
+    const base64 = btoa(json);
+    const token = encodeURIComponent(base64);
+
     const url = new URL("/share/midpoint", window.location.origin);
-    if (locationA) url.searchParams.set("a", locationA);
-    if (locationB) url.searchParams.set("b", locationB);
+    url.hash = token;
 
     const urlString = url.toString();
 
