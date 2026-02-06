@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { track } from '../../services/analytics';
 import {
   Text,
   SafeAreaView,
   View,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Image,
   ScrollView,
+  Dimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,6 +31,54 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const [locationA, setLocationA] = useState('');
   const [locationB, setLocationB] = useState('');
+
+  const scrollRef = useRef<ScrollView | null>(null);
+  const fieldARef = useRef<View | null>(null);
+  const fieldBRef = useRef<View | null>(null);
+  const scrollYRef = useRef(0);
+  const keyboardHeightRef = useRef(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent as any, (e: any) => {
+      const h = typeof e?.endCoordinates?.height === 'number' ? e.endCoordinates.height : 0;
+      keyboardHeightRef.current = h;
+    });
+    const hideSub = Keyboard.addListener(hideEvent as any, () => {
+      keyboardHeightRef.current = 0;
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const scrollFieldIntoView = (ref: React.RefObject<View | null>) => {
+    const node = ref.current;
+    const scroll = scrollRef.current;
+    if (!node || !scroll || typeof (node as any).measureInWindow !== 'function') return;
+
+    requestAnimationFrame(() => {
+      (node as any).measureInWindow((_x: number, y: number, _w: number, h: number) => {
+        const screenHeight = Dimensions.get('window').height;
+        const kb = keyboardHeightRef.current;
+        const padding = 14;
+
+        const keyboardTop = screenHeight - kb;
+        const fieldBottom = y + h;
+
+        // Only scroll if the field would be covered by the keyboard.
+        const overlap = fieldBottom + padding - keyboardTop;
+        if (overlap <= 0) return;
+
+        const nextY = Math.max(0, scrollYRef.current + overlap);
+        scroll.scrollTo({ y: nextY, animated: true });
+      });
+    });
+  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,8 +124,15 @@ export default function HomeScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
+          ref={(r) => {
+            scrollRef.current = r;
+          }}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
+          onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+            scrollYRef.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: 'center',
@@ -143,7 +202,11 @@ export default function HomeScreen() {
             </View>
 
             <View style={{ gap: theme.spacing.lg }}>
-              <View>
+              <View
+                ref={(r) => {
+                  fieldARef.current = r;
+                }}
+              >
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
@@ -160,10 +223,18 @@ export default function HomeScreen() {
                   onChangeText={setLocationA}
                   placeholder="Enter first location"
                   returnKeyType="next"
+                  onFocus={(e) => {
+                    scrollFieldIntoView(fieldARef);
+                    void e;
+                  }}
                 />
               </View>
 
-              <View>
+              <View
+                ref={(r) => {
+                  fieldBRef.current = r;
+                }}
+              >
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
@@ -180,6 +251,10 @@ export default function HomeScreen() {
                   onChangeText={setLocationB}
                   placeholder="Enter second location"
                   returnKeyType="done"
+                  onFocus={(e) => {
+                    scrollFieldIntoView(fieldBRef);
+                    void e;
+                  }}
                 />
               </View>
 
