@@ -718,8 +718,8 @@ export default function Home() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: "var(--space-xs)",
-                  gap: "var(--space-sm)",
+                  marginBottom: "var(--space-sm)",
+                  gap: "var(--space-md)",
                 }}
               >
                 <div
@@ -727,6 +727,7 @@ export default function Home() {
                     fontSize: "var(--font-size-subheading)",
                     color: "var(--color-primary-dark)",
                     fontWeight: 500,
+                    lineHeight: 1.1,
                   }}
                 >
                   Nearby options
@@ -739,15 +740,23 @@ export default function Home() {
                       flexDirection: "column",
                       alignItems: "flex-end",
                       gap: "var(--space-xxs)",
+                      flexShrink: 0,
                     }}
                   >
+                    {/* Premium card-deck controller (always visible, never shifts) */}
                     <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "var(--space-xs)",
                         justifyContent: "flex-end",
-                        flexWrap: "wrap",
+                        gap: 6,
+                        padding: 6,
+                        height: 44,
+                        borderRadius: "var(--radius-pill)",
+                        border: "1px solid var(--color-divider)",
+                        backgroundColor: "var(--color-surface)",
+                        boxShadow: "var(--shadow-card)",
+                        flexWrap: "nowrap",
                       }}
                     >
                       <button
@@ -755,89 +764,108 @@ export default function Home() {
                         onClick={handlePrevBatch}
                         disabled={!canGoPrev}
                         style={{
-                          padding: "4px 10px",
+                          height: 32,
+                          minWidth: 92,
+                          padding: "0 12px",
                           borderRadius: "var(--radius-pill)",
                           border: "1px solid var(--color-divider)",
                           backgroundColor: "var(--color-surface)",
                           color: "var(--color-primary-dark)",
                           cursor: canGoPrev ? "pointer" : "default",
                           fontSize: "var(--font-size-caption)",
-                          opacity: canGoPrev ? 1 : 0.6,
+                          fontWeight: 600,
+                          letterSpacing: 0.2,
+                          opacity: canGoPrev ? 1 : 0.42,
+                          transition: "opacity 180ms ease",
                           whiteSpace: "nowrap",
                         }}
                       >
-                        Previous results
+                        Prev
                       </button>
 
-                      {canGoNextStored && (
-                        <button
-                          type="button"
-                          onClick={handleNextBatch}
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: "var(--radius-pill)",
-                            border: "1px solid var(--color-divider)",
-                            backgroundColor: "var(--color-surface)",
-                            color: "var(--color-primary-dark)",
-                            cursor: "pointer",
-                            fontSize: "var(--font-size-caption)",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          Next results
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={handleNextBatch}
+                        disabled={!canGoNextStored}
+                        style={{
+                          height: 32,
+                          minWidth: 92,
+                          padding: "0 12px",
+                          borderRadius: "var(--radius-pill)",
+                          border: "1px solid var(--color-divider)",
+                          backgroundColor: "var(--color-surface)",
+                          color: "var(--color-primary-dark)",
+                          cursor: canGoNextStored ? "pointer" : "default",
+                          fontSize: "var(--font-size-caption)",
+                          fontWeight: 600,
+                          letterSpacing: 0.2,
+                          opacity: canGoNextStored ? 1 : 0.42,
+                          transition: "opacity 180ms ease",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Next
+                      </button>
 
-                      {isOnLastBatch && canRescanMore && (
-                        <button
-                          type="button"
-                          onClick={() => void handleSeeDifferentOptions()}
-                          disabled={isRescanning}
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: "var(--radius-pill)",
-                            border: "1px solid var(--color-accent)",
-                            backgroundColor: "var(--color-surface)",
-                            color: "var(--color-primary-dark)",
-                            cursor: isRescanning ? "default" : "pointer",
-                            fontSize: "var(--font-size-caption)",
-                            opacity: isRescanning ? 0.7 : 1,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {isRescanning
-                            ? "Refreshing…"
-                            : "See different options"}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => void handleSeeDifferentOptions()}
+                        disabled={!isOnLastBatch || !canRescanMore || isRescanning}
+                        style={{
+                          height: 32,
+                          minWidth: 140,
+                          padding: "0 14px",
+                          borderRadius: "var(--radius-pill)",
+                          border: "1px solid var(--color-accent)",
+                          backgroundColor: "var(--color-surface)",
+                          color: "var(--color-primary-dark)",
+                          cursor:
+                            !isOnLastBatch || !canRescanMore || isRescanning
+                              ? "default"
+                              : "pointer",
+                          fontSize: "var(--font-size-caption)",
+                          fontWeight: 600,
+                          letterSpacing: 0.2,
+                          opacity:
+                            isOnLastBatch && canRescanMore && !isRescanning ? 1 : 0.42,
+                          transition: "opacity 180ms ease",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {isRescanning ? "Refreshing…" : "New options"}
+                      </button>
                     </div>
 
-                    {isOnLastBatch && !canRescanMore && (
-                      <div
+                    {/* Fixed-height message area (fades, never shifts layout) */}
+                    <div
+                      style={{
+                        height: 20,
+                        marginTop: 4,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <span
                         style={{
                           fontSize: "var(--font-size-caption)",
                           color: "var(--color-muted)",
-                          marginTop: 2,
                           whiteSpace: "nowrap",
+                          opacity:
+                            (isOnLastBatch && !canRescanMore) ||
+                            (!isOnLastBatch && Boolean(noMoreOptionsMessage))
+                              ? 1
+                              : 0,
+                          transition: "opacity 180ms ease",
                         }}
                       >
-                        {noMoreOptionsMessage ??
-                          "Try adjusting your locations for more options."}
-                      </div>
-                    )}
-
-                    {!isOnLastBatch && noMoreOptionsMessage && (
-                      <div
-                        style={{
-                          fontSize: "var(--font-size-caption)",
-                          color: "var(--color-muted)",
-                          marginTop: 2,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {noMoreOptionsMessage}
-                      </div>
-                    )}
+                        {isOnLastBatch && !canRescanMore
+                          ? noMoreOptionsMessage ??
+                            "Try adjusting your locations for more options."
+                          : noMoreOptionsMessage ?? ""}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
