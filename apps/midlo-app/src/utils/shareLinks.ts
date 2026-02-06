@@ -26,14 +26,21 @@ export function webBaseUrl(): string {
 
   // Optional: allow setting via app config extras.
   const extra: any = (Constants as any)?.expoConfig?.extra;
-  const fromExtra = typeof extra?.webBaseUrl === "string" ? normalizeHttpsBaseUrl(extra.webBaseUrl) : null;
+  const fromExtra =
+    typeof extra?.webBaseUrl === "string"
+      ? normalizeHttpsBaseUrl(extra.webBaseUrl)
+      : null;
   if (fromExtra) return fromExtra;
 
   // Production default.
   return "https://midlo.ai";
 }
 
-export function midpointShareUrl(locationA: string, locationB: string, places?: Place[]): string {
+export function midpointShareUrl(
+  locationA: string,
+  locationB: string,
+  places?: Place[],
+): string {
   const u = new URL("/share/midpoint", webBaseUrl());
   if (locationA) u.searchParams.set("a", locationA);
   if (locationB) u.searchParams.set("b", locationB);
@@ -43,6 +50,9 @@ export function midpointShareUrl(locationA: string, locationB: string, places?: 
 }
 
 export function placeShareUrl(placeId: string): string {
-  const u = new URL(`/share/place/${encodeURIComponent(placeId)}`, webBaseUrl());
+  const u = new URL(
+    `/share/place/${encodeURIComponent(placeId)}`,
+    webBaseUrl(),
+  );
   return u.toString();
 }

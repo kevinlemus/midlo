@@ -1,15 +1,15 @@
-import React from 'react';
-import { Platform } from 'react-native';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createStackNavigator } from '@react-navigation/stack';
+import React from "react";
+import { Platform } from "react-native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createStackNavigator } from "@react-navigation/stack";
 
-import HomeScreen from './screens/HomeScreen';
-import ResultsScreen from './screens/ResultsScreen';
-import MapScreen from './screens/MapScreen';
-import PlaceScreen from './screens/PlaceScreen';
-import { theme } from 'theme';
-import type { Place } from '../services/api';
+import HomeScreen from "./screens/HomeScreen";
+import ResultsScreen from "./screens/ResultsScreen";
+import MapScreen from "./screens/MapScreen";
+import PlaceScreen from "./screens/PlaceScreen";
+import { theme } from "theme";
+import type { Place } from "../services/api";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -19,13 +19,13 @@ export type RootStackParamList = {
     locationA: string;
     locationB: string;
 
-		// Persisted state so back-navigation (e.g. from Place) restores the same batch.
-		resultsKey?: string;
-		resultsState?: {
-			batches: Place[][];
-			activeBatchIndex: number;
-			rescanCount: number;
-		};
+    // Persisted state so back-navigation (e.g. from Place) restores the same batch.
+    resultsKey?: string;
+    resultsState?: {
+      batches: Place[][];
+      activeBatchIndex: number;
+      rescanCount: number;
+    };
   };
   Map: {
     midpoint: { lat: number; lng: number };
@@ -37,7 +37,7 @@ export type RootStackParamList = {
 };
 
 const StackNavigator =
-  Platform.OS === 'web' ? createStackNavigator : createNativeStackNavigator;
+  Platform.OS === "web" ? createStackNavigator : createNativeStackNavigator;
 const Stack = StackNavigator<RootStackParamList>();
 
 const navTheme = {
@@ -68,10 +68,26 @@ export default function RootNavigation() {
           headerShadowVisible: false,
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Midlo' }} />
-        <Stack.Screen name="Results" component={ResultsScreen} options={{ title: 'Midpoint' }} />
-        <Stack.Screen name="Map" component={MapScreen} options={{ title: 'Map' }} />
-        <Stack.Screen name="Place" component={PlaceScreen} options={{ title: 'Place' }} />
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: "Midlo" }}
+        />
+        <Stack.Screen
+          name="Results"
+          component={ResultsScreen}
+          options={{ title: "Midpoint" }}
+        />
+        <Stack.Screen
+          name="Map"
+          component={MapScreen}
+          options={{ title: "Map" }}
+        />
+        <Stack.Screen
+          name="Place"
+          component={PlaceScreen}
+          options={{ title: "Place" }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

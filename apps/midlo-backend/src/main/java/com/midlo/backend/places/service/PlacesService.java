@@ -56,13 +56,15 @@ public class PlacesService {
 
 		// Goal: provide enough unique options for 6 batches × 5 places = 30.
 		final int targetUniquePlaces = 30;
-		// Keep latency bounded: build variety from multiple queries, but cap total calls.
+		// Keep latency bounded: build variety from multiple queries, but cap total
+		// calls.
 		final int maxQueries = 8;
 		final double minRating = 2.5;
 		final int baseRadiusMeters = 8000; // keep midpoint fairness; only small jitter applied per query
 		final Random random = new Random();
 
-		// Keep this 100% on places:searchNearby (stable payload shape). places:searchText has been
+		// Keep this 100% on places:searchNearby (stable payload shape).
+		// places:searchText has been
 		// a frequent source of INVALID_ARGUMENT due to stricter request schema.
 		List<String> types = List.of(
 				"restaurant",
@@ -127,7 +129,8 @@ public class PlacesService {
 		// Additional dedupe for Google variants: name + address
 		List<Candidate> dedupedByNameAddress = dedupeByNameAndAddress(qualityPool);
 		if (dedupedByNameAddress.size() < targetUniquePlaces && qualityPool == ratingFiltered) {
-			// Name+address dedupe might have pushed us under; relax rating filter to preserve variety.
+			// Name+address dedupe might have pushed us under; relax rating filter to
+			// preserve variety.
 			dedupedByNameAddress = dedupeByNameAndAddress(withCoords);
 		}
 
@@ -250,8 +253,10 @@ public class PlacesService {
 	private static int countHighQualityUnique(Iterable<Candidate> candidates, double minRating) {
 		int count = 0;
 		for (Candidate c : candidates) {
-			if (c.lat == null || c.lng == null) continue;
-			if (c.rating != null && c.rating < minRating) continue;
+			if (c.lat == null || c.lng == null)
+				continue;
+			if (c.rating != null && c.rating < minRating)
+				continue;
 			count++;
 		}
 		return count;
@@ -293,7 +298,8 @@ public class PlacesService {
 	}
 
 	private static String normalizeKey(String s) {
-		if (s == null) return "";
+		if (s == null)
+			return "";
 		String base = s.trim().toLowerCase(Locale.US);
 		base = base.replaceAll("[^a-z0-9]+", " ");
 		base = base.replaceAll("\\s+", " ").trim();
@@ -332,7 +338,8 @@ public class PlacesService {
 		return r * c;
 	}
 
-	private record Candidate(String placeId, String name, String formattedAddress, Double rating, Double lat, Double lng,
+	private record Candidate(String placeId, String name, String formattedAddress, Double rating, Double lat,
+			Double lng,
 			double distanceMeters) {
 	}
 

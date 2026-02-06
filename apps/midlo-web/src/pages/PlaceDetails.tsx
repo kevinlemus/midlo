@@ -82,7 +82,10 @@ export default function PlaceDetailsPage() {
 
   const handleShare = async () => {
     const shareUrl = placeId
-      ? new URL(`/share/place/${encodeURIComponent(placeId)}`, window.location.origin)
+      ? new URL(
+          `/share/place/${encodeURIComponent(placeId)}`,
+          window.location.origin,
+        )
       : new URL(window.location.href);
 
     const urlString = shareUrl.toString();
@@ -378,7 +381,13 @@ export default function PlaceDetailsPage() {
                   Contact
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-sm)",
+                  }}
+                >
                   {details.websiteUri && (
                     <button
                       type="button"
@@ -444,13 +453,25 @@ export default function PlaceDetailsPage() {
                   Directions
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "var(--space-sm)",
+                  }}
+                >
                   {/* Full-width CTA */}
                   <button
                     type="button"
                     onClick={() => {
-                      const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
-                      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                      const links = mapsLinks(
+                        lat as number,
+                        lng as number,
+                        placeId ?? undefined,
+                      );
+                      const isIOS = /iPad|iPhone|iPod/.test(
+                        navigator.userAgent,
+                      );
                       const defaultUrl = isIOS ? links.apple : links.google;
                       window.open(defaultUrl, "_blank");
                     }}
@@ -482,7 +503,11 @@ export default function PlaceDetailsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
+                        const links = mapsLinks(
+                          lat as number,
+                          lng as number,
+                          placeId ?? undefined,
+                        );
                         window.open(links.google, "_blank");
                       }}
                       style={{
@@ -503,7 +528,11 @@ export default function PlaceDetailsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
+                        const links = mapsLinks(
+                          lat as number,
+                          lng as number,
+                          placeId ?? undefined,
+                        );
                         window.open(links.apple, "_blank");
                       }}
                       style={{
@@ -524,7 +553,11 @@ export default function PlaceDetailsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const links = mapsLinks(lat as number, lng as number, placeId ?? undefined);
+                        const links = mapsLinks(
+                          lat as number,
+                          lng as number,
+                          placeId ?? undefined,
+                        );
                         window.open(links.waze, "_blank");
                       }}
                       style={{

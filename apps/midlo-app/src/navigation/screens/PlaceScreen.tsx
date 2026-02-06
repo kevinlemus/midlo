@@ -1,5 +1,5 @@
-import React from 'react';
-import { track } from '../../services/analytics';
+import React from "react";
+import { track } from "../../services/analytics";
 import {
   SafeAreaView,
   View,
@@ -11,32 +11,35 @@ import {
   Linking,
   ScrollView as RNScrollView,
   Platform,
-} from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { RouteProp } from '@react-navigation/native';
+} from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
 
-import { theme } from 'theme';
-import type { RootStackParamList } from 'navigation';
-import { api, placePhotoUrl } from '../../services/api';
-import type { PlacePhoto } from '../../services/api';
-import MidloCard from '../../components/MidloCard';
-import MidloButton from '../../components/MidloButton';
-import { mapsLinksWithPlaceId } from '../../utils/maps';
-import { placeShareUrl } from '../../utils/shareLinks';
+import { theme } from "theme";
+import type { RootStackParamList } from "navigation";
+import { api, placePhotoUrl } from "../../services/api";
+import type { PlacePhoto } from "../../services/api";
+import MidloCard from "../../components/MidloCard";
+import MidloButton from "../../components/MidloButton";
+import { mapsLinksWithPlaceId } from "../../utils/maps";
+import { placeShareUrl } from "../../utils/shareLinks";
 
-type PlaceRoute = RouteProp<RootStackParamList, 'Place'>;
+type PlaceRoute = RouteProp<RootStackParamList, "Place">;
 
 export default function PlaceScreen() {
   const navigation =
-    useNavigation<import('@react-navigation/native').NavigationProp<RootStackParamList>>();
+    useNavigation<
+      import("@react-navigation/native").NavigationProp<RootStackParamList>
+    >();
   const route = useRoute<PlaceRoute>();
 
   const placeId = route.params?.placeId;
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [details, setDetails] =
-    React.useState<Awaited<ReturnType<typeof api.getPlaceDetails>> | null>(null);
+  const [details, setDetails] = React.useState<Awaited<
+    ReturnType<typeof api.getPlaceDetails>
+  > | null>(null);
   const [selectedPhoto, setSelectedPhoto] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -54,7 +57,7 @@ export default function PlaceScreen() {
           setSelectedPhoto(photos[0].name);
         }
       })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
   }, [placeId]);
 
@@ -65,24 +68,28 @@ export default function PlaceScreen() {
   const extraPhotos = photos.slice(1, 5);
   const weekdayDescriptions = details?.weekdayDescriptions ?? [];
 
-  const lat = (details as any)?.location?.latitude ?? (details as any)?.location?.lat;
-  const lng = (details as any)?.location?.longitude ?? (details as any)?.location?.lng;
+  const lat =
+    (details as any)?.location?.latitude ?? (details as any)?.location?.lat;
+  const lng =
+    (details as any)?.location?.longitude ?? (details as any)?.location?.lng;
 
-  const hasLatLng = typeof lat === 'number' && typeof lng === 'number';
+  const hasLatLng = typeof lat === "number" && typeof lng === "number";
 
   const priceLevel = (details as any)?.priceLevel as number | undefined;
   const primaryType =
     (details as any)?.primaryType ??
-    (Array.isArray((details as any)?.types) ? (details as any).types[0] : undefined);
+    (Array.isArray((details as any)?.types)
+      ? (details as any).types[0]
+      : undefined);
 
   const formatPrice = (level?: number) => {
-    if (typeof level !== 'number') return null;
-    return '$'.repeat(Math.min(Math.max(level, 1), 4));
+    if (typeof level !== "number") return null;
+    return "$".repeat(Math.min(Math.max(level, 1), 4));
   };
 
   const formatType = (t?: string) => {
     if (!t) return null;
-    return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    return t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
   const handleShare = async () => {
@@ -91,9 +98,9 @@ export default function PlaceScreen() {
     try {
       const url = placeShareUrl(placeId);
 
-      const name = details?.name ?? 'Place';
-      const address = details?.formattedAddress ?? '';
-      const message = `Meet in the middle with Midlo:\n\n${name}${address ? `\n${address}` : ''}\n\n${url}`;
+      const name = details?.name ?? "Place";
+      const address = details?.formattedAddress ?? "";
+      const message = `Meet in the middle with Midlo:\n\n${name}${address ? `\n${address}` : ""}\n\n${url}`;
 
       await Share.share({ title: name, message, url });
     } catch {
@@ -108,8 +115,8 @@ export default function PlaceScreen() {
           {/* Header Row */}
           <View
             style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
+              flexDirection: "row",
+              justifyContent: "space-between",
               gap: theme.spacing.sm,
               marginBottom: theme.spacing.md,
             }}
@@ -137,7 +144,7 @@ export default function PlaceScreen() {
             {details?.googleMapsUri ? (
               <Pressable
                 onPress={() => {
-                  track('place_opened', { placeId });
+                  track("place_opened", { placeId });
                   Linking.openURL(details.googleMapsUri!);
                 }}
                 style={{
@@ -177,8 +184,8 @@ export default function PlaceScreen() {
                 padding: theme.spacing.md,
                 borderRadius: theme.radii.md,
                 borderWidth: 1,
-                borderColor: '#FCA5A5',
-                backgroundColor: '#FEF2F2',
+                borderColor: "#FCA5A5",
+                backgroundColor: "#FEF2F2",
               }}
             >
               <Text
@@ -204,7 +211,7 @@ export default function PlaceScreen() {
                     fontWeight: theme.typography.weight.bold as any,
                   }}
                 >
-                  {details.name ?? 'Place'}
+                  {details.name ?? "Place"}
                 </Text>
 
                 {details.formattedAddress ? (
@@ -219,7 +226,7 @@ export default function PlaceScreen() {
                 ) : null}
 
                 {/* Full-width Share button */}
-                <View style={{ width: '100%', marginTop: theme.spacing.md }}>
+                <View style={{ width: "100%", marginTop: theme.spacing.md }}>
                   <MidloButton
                     title="Share this place"
                     onPress={handleShare}
@@ -230,13 +237,13 @@ export default function PlaceScreen() {
                 {/* Chips */}
                 <View
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: "row",
                     gap: 10,
-                    flexWrap: 'wrap',
+                    flexWrap: "wrap",
                     marginTop: theme.spacing.md,
                   }}
                 >
-                  {typeof details.rating === 'number' && (
+                  {typeof details.rating === "number" && (
                     <View
                       style={{
                         paddingVertical: 6,
@@ -253,14 +260,14 @@ export default function PlaceScreen() {
                         }}
                       >
                         {details.rating.toFixed(1)} ★
-                        {typeof details.userRatingCount === 'number'
+                        {typeof details.userRatingCount === "number"
                           ? ` (${details.userRatingCount})`
-                          : ''}
+                          : ""}
                       </Text>
                     </View>
                   )}
 
-                  {typeof details.openNow === 'boolean' && (
+                  {typeof details.openNow === "boolean" && (
                     <View
                       style={{
                         paddingVertical: 6,
@@ -269,8 +276,8 @@ export default function PlaceScreen() {
                         borderWidth: 1,
                         borderColor: theme.colors.divider,
                         backgroundColor: details.openNow
-                          ? 'rgba(16,185,129,0.14)'
-                          : 'rgba(239,68,68,0.14)',
+                          ? "rgba(16,185,129,0.14)"
+                          : "rgba(239,68,68,0.14)",
                       }}
                     >
                       <Text
@@ -279,7 +286,7 @@ export default function PlaceScreen() {
                           fontSize: theme.typography.caption,
                         }}
                       >
-                        {details.openNow ? 'Open now' : 'Closed'}
+                        {details.openNow ? "Open now" : "Closed"}
                       </Text>
                     </View>
                   )}
@@ -334,7 +341,7 @@ export default function PlaceScreen() {
                   style={{
                     marginTop: theme.spacing.lg,
                     borderRadius: theme.radii.lg,
-                    overflow: 'hidden',
+                    overflow: "hidden",
                     borderWidth: 1,
                     borderColor: theme.colors.divider,
                   }}
@@ -342,7 +349,7 @@ export default function PlaceScreen() {
                   <Image
                     source={{ uri: placePhotoUrl(hero, 1200) }}
                     style={{
-                      width: '100%',
+                      width: "100%",
                       height: 220,
                       backgroundColor: theme.colors.surface,
                     }}
@@ -367,7 +374,7 @@ export default function PlaceScreen() {
                           width: 140,
                           height: 100,
                           borderRadius: theme.radii.md,
-                          overflow: 'hidden',
+                          overflow: "hidden",
                           borderWidth: 1,
                           borderColor:
                             selectedPhoto === p.name
@@ -377,7 +384,11 @@ export default function PlaceScreen() {
                       >
                         <Image
                           source={{ uri: placePhotoUrl(p.name, 600) }}
-                          style={{ width: '100%', height: '100%', backgroundColor: theme.colors.highlight }}
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            backgroundColor: theme.colors.highlight,
+                          }}
                           resizeMode="cover"
                         />
                       </Pressable>
@@ -417,7 +428,9 @@ export default function PlaceScreen() {
 
               {/* Contact */}
               {(details.websiteUri || details.internationalPhoneNumber) && (
-                <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+                <View
+                  style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}
+                >
                   <Text
                     style={{
                       color: theme.colors.primaryDark,
@@ -440,7 +453,9 @@ export default function PlaceScreen() {
                     <MidloButton
                       title={`Call ${details.internationalPhoneNumber}`}
                       onPress={() =>
-                        Linking.openURL(`tel:${details.internationalPhoneNumber}`)
+                        Linking.openURL(
+                          `tel:${details.internationalPhoneNumber}`,
+                        )
                       }
                       variant="secondary"
                     />
@@ -449,7 +464,9 @@ export default function PlaceScreen() {
               )}
 
               {/* Directions */}
-              <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+              <View
+                style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}
+              >
                 <Text
                   style={{
                     color: theme.colors.primaryDark,
@@ -463,31 +480,31 @@ export default function PlaceScreen() {
                 {hasLatLng && placeId ? (
                   <View
                     style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
+                      flexDirection: "row",
+                      flexWrap: "wrap",
                       gap: theme.spacing.sm,
                     }}
                   >
                     {(() => {
                       const links = mapsLinksWithPlaceId(lat, lng, placeId);
                       const defaultUrl =
-                        Platform.OS === 'ios' ? links.apple : links.google;
+                        Platform.OS === "ios" ? links.apple : links.google;
 
                       return (
                         <>
                           <MidloButton
                             title="Get directions"
                             onPress={() => {
-                              track('directions_clicked', { placeId });
+                              track("directions_clicked", { placeId });
                               Linking.openURL(defaultUrl);
                             }}
                           />
 
                           <Pressable
                             onPress={() => {
-                              track('directions_clicked', {
+                              track("directions_clicked", {
                                 placeId,
-                                provider: 'google',
+                                provider: "google",
                               });
                               Linking.openURL(links.google);
                             }}
@@ -511,9 +528,9 @@ export default function PlaceScreen() {
 
                           <Pressable
                             onPress={() => {
-                              track('directions_clicked', {
+                              track("directions_clicked", {
                                 placeId,
-                                provider: 'apple',
+                                provider: "apple",
                               });
                               Linking.openURL(links.apple);
                             }}
@@ -537,9 +554,9 @@ export default function PlaceScreen() {
 
                           <Pressable
                             onPress={() => {
-                              track('directions_clicked', {
+                              track("directions_clicked", {
                                 placeId,
-                                provider: 'waze',
+                                provider: "waze",
                               });
                               Linking.openURL(links.waze);
                             }}
@@ -568,7 +585,10 @@ export default function PlaceScreen() {
                   <MidloButton
                     title="Get directions"
                     onPress={() => {
-                      track('directions_clicked', { placeId, provider: 'google_uri' });
+                      track("directions_clicked", {
+                        placeId,
+                        provider: "google_uri",
+                      });
                       Linking.openURL(details.googleMapsUri!);
                     }}
                   />

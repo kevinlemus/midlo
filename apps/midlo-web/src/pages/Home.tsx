@@ -436,7 +436,9 @@ export default function Home() {
           source: fromQueryRef.current ? "query_params" : "inline",
         });
       } else {
-        setNoMoreOptionsMessage("Try adjusting your locations for more options.");
+        setNoMoreOptionsMessage(
+          "Try adjusting your locations for more options.",
+        );
       }
     } catch (e) {
       setError(
@@ -523,8 +525,9 @@ export default function Home() {
               margin: 0,
             }}
           >
-            Drop in two locations and we’ll find a friendly halfway spot that feels fair to both
-            sides—plus a few places that actually feel good to meet at.
+            Drop in two locations and we’ll find a friendly halfway spot that
+            feels fair to both sides—plus a few places that actually feel good
+            to meet at.
           </p>
         </div>
 
@@ -541,7 +544,11 @@ export default function Home() {
             >
               Location A
             </div>
-            <SearchBar placeholder="Enter first location" value={aText} onChange={setAText} />
+            <SearchBar
+              placeholder="Enter first location"
+              value={aText}
+              onChange={setAText}
+            />
           </div>
 
           <div>
@@ -556,10 +563,20 @@ export default function Home() {
             >
               Location B
             </div>
-            <SearchBar placeholder="Enter second location" value={bText} onChange={setBText} />
+            <SearchBar
+              placeholder="Enter second location"
+              value={bText}
+              onChange={setBText}
+            />
           </div>
 
-          <div style={{ marginTop: "var(--space-sm)", display: "grid", gap: "var(--space-sm)" }}>
+          <div
+            style={{
+              marginTop: "var(--space-sm)",
+              display: "grid",
+              gap: "var(--space-sm)",
+            }}
+          >
             <Button
               title={isLoading ? "Finding midpoint…" : "Find midpoint"}
               onClick={handleFind}
@@ -617,7 +634,11 @@ export default function Home() {
         </div>
 
         <div ref={resultsRef} style={{ marginTop: "var(--space-lg)" }}>
-          <MapView height={240} hasMidpoint={Boolean(midpoint)} placesCount={places.length} />
+          <MapView
+            height={240}
+            hasMidpoint={Boolean(midpoint)}
+            placesCount={places.length}
+          />
 
           {midpoint && (
             <div
@@ -784,7 +805,9 @@ export default function Home() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {isRescanning ? "Refreshing…" : "See different options"}
+                          {isRescanning
+                            ? "Refreshing…"
+                            : "See different options"}
                         </button>
                       )}
                     </div>
@@ -798,7 +821,8 @@ export default function Home() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {noMoreOptionsMessage ?? "Try adjusting your locations for more options."}
+                        {noMoreOptionsMessage ??
+                          "Try adjusting your locations for more options."}
                       </div>
                     )}
 
@@ -850,9 +874,12 @@ export default function Home() {
                         const b = bText || "";
                         if (a) url.searchParams.set("a", a);
                         if (b) url.searchParams.set("b", b);
-                        navigate(`/p/${encodeURIComponent(p.placeId)}${url.search}`, {
-                          replace: false,
-                        });
+                        navigate(
+                          `/p/${encodeURIComponent(p.placeId)}${url.search}`,
+                          {
+                            replace: false,
+                          },
+                        );
                       }
                     }}
                   />
@@ -878,7 +905,8 @@ export default function Home() {
                 textAlign: "center",
               }}
             >
-              Add two locations above and see where you should meet in the middle.
+              Add two locations above and see where you should meet in the
+              middle.
             </div>
           )}
         </div>

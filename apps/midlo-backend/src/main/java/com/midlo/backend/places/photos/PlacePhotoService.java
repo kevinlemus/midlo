@@ -74,7 +74,8 @@ public class PlacePhotoService {
 
         String cacheKey = trimmed + "|w=" + w + "|h=" + (h == null ? "" : h);
         CachedPhotoUri cached = photoUriCache.get(cacheKey);
-        if (cached != null && cached.expiresAt().isAfter(Instant.now()) && cached.uri() != null && !cached.uri().isBlank()) {
+        if (cached != null && cached.expiresAt().isAfter(Instant.now()) && cached.uri() != null
+                && !cached.uri().isBlank()) {
             return cached.uri();
         }
 

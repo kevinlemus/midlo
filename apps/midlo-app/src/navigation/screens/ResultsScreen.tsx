@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   SafeAreaView,
   View,
@@ -8,29 +8,37 @@ import {
   Image,
   Pressable,
   Platform,
-} from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { RouteProp } from '@react-navigation/native';
+} from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
 
-import { theme } from 'theme';
-import type { RootStackParamList } from 'navigation';
-import MidloButton from '../../components/MidloButton';
-import MidloCard from '../../components/MidloCard';
-import { midpointShareUrl } from '../../utils/shareLinks';
-import { track } from '../../services/analytics';
-import { api } from '../../services/api';
+import { theme } from "theme";
+import type { RootStackParamList } from "navigation";
+import MidloButton from "../../components/MidloButton";
+import MidloCard from "../../components/MidloCard";
+import { midpointShareUrl } from "../../utils/shareLinks";
+import { track } from "../../services/analytics";
+import { api } from "../../services/api";
 
-import Logo from '../../assets/images/midlo_logo.png';
+import Logo from "../../assets/images/midlo_logo.png";
 
-type ResultsRoute = RouteProp<RootStackParamList, 'Results'>;
+type ResultsRoute = RouteProp<RootStackParamList, "Results">;
 
 export default function ResultsScreen() {
   const navigation =
-    useNavigation<import('@react-navigation/native').NavigationProp<RootStackParamList>>();
+    useNavigation<
+      import("@react-navigation/native").NavigationProp<RootStackParamList>
+    >();
   const route = useRoute<ResultsRoute>();
 
-  const { midpoint, places, locationA, locationB, resultsKey: initialResultsKey, resultsState } =
-    route.params;
+  const {
+    midpoint,
+    places,
+    locationA,
+    locationB,
+    resultsKey: initialResultsKey,
+    resultsState,
+  } = route.params;
 
   const MAX_RESCANS_PER_SEARCH = 5;
   const TOTAL_BATCHES = MAX_RESCANS_PER_SEARCH + 1;
@@ -42,10 +50,12 @@ export default function ResultsScreen() {
   }
 
   const makeResultsKey = React.useCallback(() => {
-    const a = (locationA ?? '').trim();
-    const b = (locationB ?? '').trim();
-    const lat = typeof midpoint?.lat === 'number' ? midpoint.lat.toFixed(6) : '';
-    const lng = typeof midpoint?.lng === 'number' ? midpoint.lng.toFixed(6) : '';
+    const a = (locationA ?? "").trim();
+    const b = (locationB ?? "").trim();
+    const lat =
+      typeof midpoint?.lat === "number" ? midpoint.lat.toFixed(6) : "";
+    const lng =
+      typeof midpoint?.lng === "number" ? midpoint.lng.toFixed(6) : "";
     return `${a}|${b}|${lat}|${lng}`;
   }, [locationA, locationB, midpoint?.lat, midpoint?.lng]);
 
@@ -55,11 +65,13 @@ export default function ResultsScreen() {
     Boolean(initialResultsKey) &&
     initialResultsKey === currentResultsKey &&
     Array.isArray(resultsState?.batches) &&
-    typeof resultsState?.activeBatchIndex === 'number';
+    typeof resultsState?.activeBatchIndex === "number";
 
   const [batches, setBatches] = React.useState<PlaceT[][]>(() => {
     if (hasSavedState) {
-      return (resultsState!.batches as PlaceT[][]).filter((b) => Array.isArray(b));
+      return (resultsState!.batches as PlaceT[][]).filter((b) =>
+        Array.isArray(b),
+      );
     }
     return [places.slice(0, 5)];
   });
@@ -74,12 +86,14 @@ export default function ResultsScreen() {
   const currentPlaces = batches[activeBatchIndex] ?? [];
   const [isRescanning, setIsRescanning] = React.useState(false);
   const [rescanCount, setRescanCount] = React.useState(() => {
-    if (hasSavedState && typeof resultsState!.rescanCount === 'number') {
+    if (hasSavedState && typeof resultsState!.rescanCount === "number") {
       return resultsState!.rescanCount;
     }
     return 0;
   });
-  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = React.useState<string | null>(null);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = React.useState<
+    string | null
+  >(null);
 
   const seenPlaceKeysRef = React.useRef<Set<string>>(
     new Set(
@@ -111,7 +125,7 @@ export default function ResultsScreen() {
 
   // Persist batches + active index into route params so back-navigation restores correctly
   // even if the screen is temporarily unmounted.
-  const lastPersistedRef = React.useRef<string>('');
+  const lastPersistedRef = React.useRef<string>("");
   React.useEffect(() => {
     try {
       const payload = {
@@ -164,7 +178,7 @@ export default function ResultsScreen() {
       return;
     }
 
-    setNoMoreOptionsMessage('Try adjusting your locations for more options.');
+    setNoMoreOptionsMessage("Try adjusting your locations for more options.");
   };
 
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
@@ -189,7 +203,7 @@ export default function ResultsScreen() {
   const pickFiveUnique = (
     candidates: typeof currentPlaces,
     exclude: typeof currentPlaces,
-    seed: number
+    seed: number,
   ) => {
     const excludeKeys = new Set(exclude.map(placeKey));
     const uniq: typeof currentPlaces = [];
@@ -209,11 +223,18 @@ export default function ResultsScreen() {
     return uniq;
   };
 
-  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
+  const jitterLatLng = (
+    lat: number,
+    lng: number,
+    seed: number,
+    attempt: number,
+  ) => {
     const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
     const radiusDeg = 0.0015 + attempt * 0.001;
     const latDelta = Math.cos(angle) * radiusDeg;
-    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const lngDelta =
+      (Math.sin(angle) * radiusDeg) /
+      Math.max(0.2, Math.cos((lat * Math.PI) / 180));
     return { lat: lat + latDelta, lng: lng + lngDelta };
   };
 
@@ -221,13 +242,13 @@ export default function ResultsScreen() {
     try {
       const url = midpointShareUrl(locationA, locationB, currentPlaces);
 
-      if (Platform.OS === 'ios') {
+      if (Platform.OS === "ios") {
         await Share.share({ url });
       } else {
         await Share.share({ message: url });
       }
 
-      track('midpoint_shared', {
+      track("midpoint_shared", {
         locationA,
         locationB,
         url,
@@ -262,7 +283,7 @@ export default function ResultsScreen() {
         pool = pool.concat(batch);
 
         const next = pickFiveUnique(pool, current, seed).filter(
-          (p) => !seenKeys.has(placeKey(p))
+          (p) => !seenKeys.has(placeKey(p)),
         );
 
         if (next.length >= 5) {
@@ -279,14 +300,16 @@ export default function ResultsScreen() {
 
         setRescanCount((c) => c + 1);
 
-        track('places_rescanned', {
+        track("places_rescanned", {
           locationA,
           locationB,
           placesCount: 5,
-          source: 'results_rescan',
+          source: "results_rescan",
         });
       } else {
-        setNoMoreOptionsMessage('Try adjusting your locations for more options.');
+        setNoMoreOptionsMessage(
+          "Try adjusting your locations for more options.",
+        );
       }
     } catch {
       // ignore
@@ -300,19 +323,21 @@ export default function ResultsScreen() {
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
+          alignItems: "center",
+          justifyContent: "center",
           padding: theme.spacing.xl,
         }}
       >
         <MidloCard>
-          <View style={{ alignItems: 'center', marginBottom: theme.spacing.xl }}>
+          <View
+            style={{ alignItems: "center", marginBottom: theme.spacing.xl }}
+          >
             <Image
               source={Logo}
               style={{
                 width: 80,
                 height: 26,
-                resizeMode: 'contain',
+                resizeMode: "contain",
                 marginBottom: theme.spacing.sm,
               }}
             />
@@ -321,7 +346,7 @@ export default function ResultsScreen() {
                 fontSize: theme.typography.heading,
                 color: theme.colors.primaryDark,
                 fontWeight: theme.typography.weight.bold as any,
-                textAlign: 'center',
+                textAlign: "center",
                 marginBottom: theme.spacing.xs,
               }}
             >
@@ -331,7 +356,7 @@ export default function ResultsScreen() {
               style={{
                 fontSize: theme.typography.body,
                 color: theme.colors.textSecondary,
-                textAlign: 'center',
+                textAlign: "center",
               }}
             >
               A fair spot between:
@@ -340,7 +365,7 @@ export default function ResultsScreen() {
               style={{
                 fontSize: theme.typography.body,
                 color: theme.colors.text,
-                textAlign: 'center',
+                textAlign: "center",
                 marginTop: theme.spacing.sm,
               }}
             >
@@ -350,7 +375,7 @@ export default function ResultsScreen() {
               style={{
                 fontSize: theme.typography.body,
                 color: theme.colors.text,
-                textAlign: 'center',
+                textAlign: "center",
               }}
             >
               B: {locationB}
@@ -370,7 +395,7 @@ export default function ResultsScreen() {
                   fontSize: theme.typography.subheading,
                   color: theme.colors.primaryDark,
                   fontWeight: theme.typography.weight.medium as any,
-                  textAlign: 'center',
+                  textAlign: "center",
                 }}
               >
                 Lat {midpoint.lat.toFixed(4)} · Lng {midpoint.lng.toFixed(4)}
@@ -379,19 +404,23 @@ export default function ResultsScreen() {
           </View>
 
           {/* NAVIGATION BUTTONS */}
-          <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
+          <View
+            style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}
+          >
             <MidloButton
               title="View on map"
-              onPress={() => navigation.navigate('Map', { midpoint, places: currentPlaces })}
+              onPress={() =>
+                navigation.navigate("Map", { midpoint, places: currentPlaces })
+              }
               variant="primary"
             />
 
             <View style={{ gap: theme.spacing.xs }}>
               <View
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
               >
                 {/* PREVIOUS */}
@@ -408,7 +437,9 @@ export default function ResultsScreen() {
                       backgroundColor: theme.colors.surface,
                       opacity: canGoPrev ? 1 : 0.6,
                     },
-                    pressed && canGoPrev ? { backgroundColor: theme.colors.highlight } : null,
+                    pressed && canGoPrev
+                      ? { backgroundColor: theme.colors.highlight }
+                      : null,
                   ]}
                 >
                   <Text
@@ -435,7 +466,9 @@ export default function ResultsScreen() {
                         borderColor: theme.colors.divider,
                         backgroundColor: theme.colors.surface,
                       },
-                      pressed ? { backgroundColor: theme.colors.highlight } : null,
+                      pressed
+                        ? { backgroundColor: theme.colors.highlight }
+                        : null,
                     ]}
                   >
                     <Text
@@ -453,7 +486,11 @@ export default function ResultsScreen() {
                 {/* RESCAN (only on last batch) */}
                 {isOnLastBatch && canRescanMore && (
                   <MidloButton
-                    title={isRescanning ? 'Finding new options…' : 'See different options'}
+                    title={
+                      isRescanning
+                        ? "Finding new options…"
+                        : "See different options"
+                    }
                     onPress={() => void handleSeeDifferentOptions()}
                     variant="secondary"
                     disabled={isRescanning}
@@ -467,10 +504,11 @@ export default function ResultsScreen() {
                   style={{
                     fontSize: theme.typography.caption,
                     color: theme.colors.muted,
-                    textAlign: 'right',
+                    textAlign: "right",
                   }}
                 >
-                  {noMoreOptionsMessage ?? 'Try adjusting your locations for more options.'}
+                  {noMoreOptionsMessage ??
+                    "Try adjusting your locations for more options."}
                 </Text>
               )}
             </View>
@@ -510,8 +548,11 @@ export default function ResultsScreen() {
                   key={p.placeId ?? String(idx)}
                   onPress={() => {
                     if (p.placeId) {
-                      track('place_opened', { placeId: p.placeId, source: 'results' });
-                      navigation.navigate('Place', { placeId: p.placeId });
+                      track("place_opened", {
+                        placeId: p.placeId,
+                        source: "results",
+                      });
+                      navigation.navigate("Place", { placeId: p.placeId });
                     }
                   }}
                   style={({ pressed }) => [
@@ -523,7 +564,9 @@ export default function ResultsScreen() {
                       backgroundColor: theme.colors.surface,
                       ...theme.shadow.card,
                     },
-                    pressed ? { backgroundColor: theme.colors.highlight } : null,
+                    pressed
+                      ? { backgroundColor: theme.colors.highlight }
+                      : null,
                   ]}
                 >
                   <Text

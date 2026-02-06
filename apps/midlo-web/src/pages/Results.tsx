@@ -26,7 +26,9 @@ export default function ResultsPage() {
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<string | null>(null);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<
+    string | null
+  >(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
@@ -66,7 +68,11 @@ export default function ResultsPage() {
     return copy;
   };
 
-  const pickFiveUnique = (candidates: Place[], exclude: Place[], seed: number) => {
+  const pickFiveUnique = (
+    candidates: Place[],
+    exclude: Place[],
+    seed: number,
+  ) => {
     const excludeKeys = new Set(exclude.map(placeKey));
     const uniq: Place[] = [];
     const seen = new Set<string>();
@@ -85,11 +91,18 @@ export default function ResultsPage() {
     return uniq;
   };
 
-  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
+  const jitterLatLng = (
+    lat: number,
+    lng: number,
+    seed: number,
+    attempt: number,
+  ) => {
     const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
     const radiusDeg = 0.0015 + attempt * 0.001;
     const latDelta = Math.cos(angle) * radiusDeg;
-    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const lngDelta =
+      (Math.sin(angle) * radiusDeg) /
+      Math.max(0.2, Math.cos((lat * Math.PI) / 180));
     return { lat: lat + latDelta, lng: lng + lngDelta };
   };
 
@@ -163,7 +176,9 @@ export default function ResultsPage() {
         }
       }, 120);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(
+        e instanceof Error ? e.message : "Something went wrong. Try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -217,7 +232,9 @@ export default function ResultsPage() {
 
       setNoMoreOptionsMessage("Try adjusting your locations for more options.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn’t refresh options. Try again.");
+      setError(
+        e instanceof Error ? e.message : "Couldn’t refresh options. Try again.",
+      );
     } finally {
       setIsRescanning(false);
     }
@@ -229,7 +246,6 @@ export default function ResultsPage() {
       return;
     }
 
-    // Share a short, public URL (production rewrites this to the OG HTML endpoint).
     const shareUrl = new URL("/share/midpoint", window.location.origin);
     shareUrl.searchParams.set("a", locationA);
     shareUrl.searchParams.set("b", locationB);
@@ -243,9 +259,7 @@ export default function ResultsPage() {
           url: urlString,
         });
         return;
-      } catch {
-        // ignore share cancellation
-      }
+      } catch {}
     }
 
     try {
@@ -534,7 +548,9 @@ export default function ResultsPage() {
                     <button
                       type="button"
                       onClick={() => void handleSeeDifferentOptions()}
-                      disabled={!isOnLastBatch || !canRescanMore || isRescanning}
+                      disabled={
+                        !isOnLastBatch || !canRescanMore || isRescanning
+                      }
                       className="midlo-button midlo-button-secondary"
                       style={{
                         padding: "4px 10px",
