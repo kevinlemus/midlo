@@ -511,16 +511,18 @@ export default function ResultsPage() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 8,
-                      padding: 7,
-                      height: 46,
+                      gap: 6,
+                      padding: 6,
+                      height: 44,
                       borderRadius: "var(--radius-pill)",
                       border: "1px solid var(--color-divider)",
                       backgroundColor: "var(--color-surface)",
                       boxShadow: "var(--shadow-card)",
                       flexWrap: "nowrap",
-                      width: "fit-content",
-                      maxWidth: "100%",
+                      width: "100%",
+                      maxWidth: "min(100%, 520px)",
+                      boxSizing: "border-box",
+                      overflow: "hidden",
                     }}
                   >
                     {/* PREVIOUS */}
@@ -531,8 +533,9 @@ export default function ResultsPage() {
                       className="midlo-button midlo-button-secondary"
                       style={{
                         height: 32,
-                        minWidth: "clamp(56px, 22vw, 76px)",
-                        padding: "0 clamp(10px, 3.2vw, 14px)",
+                        flex: "1 1 0",
+                        minWidth: 0,
+                        padding: "0 10px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
                         fontWeight: 600,
@@ -552,8 +555,9 @@ export default function ResultsPage() {
                       className="midlo-button midlo-button-secondary"
                       style={{
                         height: 32,
-                        minWidth: "clamp(56px, 22vw, 76px)",
-                        padding: "0 clamp(10px, 3.2vw, 14px)",
+                        flex: "1 1 0",
+                        minWidth: 0,
+                        padding: "0 10px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
                         fontWeight: 600,
@@ -575,8 +579,9 @@ export default function ResultsPage() {
                       className="midlo-button midlo-button-secondary"
                       style={{
                         height: 32,
-                        minWidth: "clamp(104px, 42vw, 148px)",
-                        padding: "0 clamp(10px, 3.2vw, 14px)",
+                        flex: "1.6 1 0",
+                        minWidth: 0,
+                        padding: "0 10px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
                         fontWeight: 600,
