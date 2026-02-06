@@ -716,21 +716,30 @@ export default function Home() {
               <div
                 style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: "var(--space-sm)",
                   marginBottom: "var(--space-sm)",
-                  gap: "var(--space-md)",
                 }}
               >
                 <div
                   style={{
-                    fontSize: "var(--font-size-subheading)",
-                    color: "var(--color-primary-dark)",
-                    fontWeight: 500,
-                    lineHeight: 1.1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "var(--space-md)",
                   }}
                 >
-                  Nearby options
+                  <div
+                    style={{
+                      fontSize: "var(--font-size-subheading)",
+                      color: "var(--color-primary-dark)",
+                      fontWeight: 500,
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    Nearby options
+                  </div>
                 </div>
 
                 {midpoint && (
@@ -738,8 +747,8 @@ export default function Home() {
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      alignItems: "flex-end",
-                      gap: "var(--space-xxs)",
+                      alignItems: "center",
+                      gap: 4,
                       flexShrink: 0,
                     }}
                   >
@@ -748,7 +757,7 @@ export default function Home() {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "flex-end",
+                        justifyContent: "center",
                         gap: 6,
                         padding: 6,
                         height: 44,
@@ -757,6 +766,8 @@ export default function Home() {
                         backgroundColor: "var(--color-surface)",
                         boxShadow: "var(--shadow-card)",
                         flexWrap: "nowrap",
+                        width: "fit-content",
+                        maxWidth: "100%",
                       }}
                     >
                       <button
@@ -765,8 +776,8 @@ export default function Home() {
                         disabled={!canGoPrev}
                         style={{
                           height: 32,
-                          minWidth: 92,
-                          padding: "0 12px",
+                          minWidth: 64,
+                          padding: "0 10px",
                           borderRadius: "var(--radius-pill)",
                           border: "1px solid var(--color-divider)",
                           backgroundColor: "var(--color-surface)",
@@ -789,8 +800,8 @@ export default function Home() {
                         disabled={!canGoNextStored}
                         style={{
                           height: 32,
-                          minWidth: 92,
-                          padding: "0 12px",
+                          minWidth: 64,
+                          padding: "0 10px",
                           borderRadius: "var(--radius-pill)",
                           border: "1px solid var(--color-divider)",
                           backgroundColor: "var(--color-surface)",
@@ -813,8 +824,8 @@ export default function Home() {
                         disabled={!isOnLastBatch || !canRescanMore || isRescanning}
                         style={{
                           height: 32,
-                          minWidth: 140,
-                          padding: "0 14px",
+                          minWidth: 112,
+                          padding: "0 10px",
                           borderRadius: "var(--radius-pill)",
                           border: "1px solid var(--color-accent)",
                           backgroundColor: "var(--color-surface)",
@@ -840,11 +851,11 @@ export default function Home() {
                     <div
                       style={{
                         height: 20,
-                        marginTop: 4,
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "flex-end",
+                        justifyContent: "center",
                         overflow: "hidden",
+                        width: "100%",
                       }}
                     >
                       <span
@@ -852,6 +863,7 @@ export default function Home() {
                           fontSize: "var(--font-size-caption)",
                           color: "var(--color-muted)",
                           whiteSpace: "nowrap",
+                          textAlign: "center",
                           opacity:
                             (isOnLastBatch && !canRescanMore) ||
                             (!isOnLastBatch && Boolean(noMoreOptionsMessage))
