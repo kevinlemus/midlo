@@ -238,8 +238,11 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const lastBatchIndex = Math.max(0, batches.length - 1);
   const canGoPrev = activeBatchIndex > 0;
-  const canGoForwardStored = activeBatchIndex < batches.length - 1;
+  const canGoNextStored = activeBatchIndex < lastBatchIndex;
+  const isOnLastBatch = activeBatchIndex === lastBatchIndex;
+  const canRescanMore = batches.length < TOTAL_BATCHES;
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
@@ -247,21 +250,27 @@ export default function Home() {
     setActiveBatchIndex((i) => Math.max(0, i - 1));
   };
 
+  const handleNextBatch = () => {
+    if (!canGoNextStored) return;
+    setNoMoreOptionsMessage(null);
+    setActiveBatchIndex((i) => Math.min(lastBatchIndex, i + 1));
+  };
+
   const handleSeeDifferentOptions = async () => {
     if (!midpoint) return;
-
-    if (canGoForwardStored) {
-      setNoMoreOptionsMessage(null);
-      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+    if (!isOnLastBatch) {
+      // On an older batch → this should never rescan, only navigate forward.
+      handleNextBatch();
       return;
     }
 
-    if (batches.length < TOTAL_BATCHES) {
+    if (isOnLastBatch && canRescanMore) {
       setNoMoreOptionsMessage(null);
       await handleRescan();
       return;
     }
 
+    // On last batch and no more rescans available.
     setNoMoreOptionsMessage("Try adjusting your locations for more options.");
   };
 
@@ -323,7 +332,6 @@ export default function Home() {
           source: fromQueryRef.current ? "query_params" : "inline",
         });
       } else {
-        // Exhausted unique options → gentle inline nudge, not an error box.
         setNoMoreOptionsMessage("Try adjusting your locations for more options.");
       }
     } catch (e) {
@@ -635,27 +643,61 @@ export default function Home() {
                         Previous results
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => void handleSeeDifferentOptions()}
-                        disabled={isRescanning}
+                      {canGoNextStored && (
+                        <button
+                          type="button"
+                          onClick={handleNextBatch}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: "var(--radius-pill)",
+                            border: "1px solid var(--color-divider)",
+                            backgroundColor: "var(--color-surface)",
+                            color: "var(--color-primary-dark)",
+                            cursor: "pointer",
+                            fontSize: "var(--font-size-caption)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Next results
+                        </button>
+                      )}
+
+                      {isOnLastBatch && canRescanMore && (
+                        <button
+                          type="button"
+                          onClick={() => void handleSeeDifferentOptions()}
+                          disabled={isRescanning}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: "var(--radius-pill)",
+                            border: "1px solid var(--color-accent)",
+                            backgroundColor: "var(--color-surface)",
+                            color: "var(--color-primary-dark)",
+                            cursor: isRescanning ? "default" : "pointer",
+                            fontSize: "var(--font-size-caption)",
+                            opacity: isRescanning ? 0.7 : 1,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {isRescanning ? "Refreshing…" : "See different options"}
+                        </button>
+                      )}
+                    </div>
+
+                    {isOnLastBatch && !canRescanMore && (
+                      <div
                         style={{
-                          padding: "4px 10px",
-                          borderRadius: "var(--radius-pill)",
-                          border: "1px solid var(--color-accent)",
-                          backgroundColor: "var(--color-surface)",
-                          color: "var(--color-primary-dark)",
-                          cursor: isRescanning ? "default" : "pointer",
                           fontSize: "var(--font-size-caption)",
-                          opacity: isRescanning ? 0.7 : 1,
+                          color: "var(--color-muted)",
+                          marginTop: 2,
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {isRescanning ? "Refreshing…" : "See different options"}
-                      </button>
-                    </div>
+                        {noMoreOptionsMessage ?? "Try adjusting your locations for more options."}
+                      </div>
+                    )}
 
-                    {noMoreOptionsMessage && (
+                    {!isOnLastBatch && noMoreOptionsMessage && (
                       <div
                         style={{
                           fontSize: "var(--font-size-caption)",

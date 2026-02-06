@@ -33,8 +33,11 @@ export default function ResultsPage() {
 
   const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
 
+  const lastBatchIndex = Math.max(0, batches.length - 1);
   const canGoPrev = activeBatchIndex > 0;
-  const canGoForwardStored = activeBatchIndex < batches.length - 1;
+  const canGoNextStored = activeBatchIndex < lastBatchIndex;
+  const isOnLastBatch = activeBatchIndex === lastBatchIndex;
+  const canRescanMore = batches.length < TOTAL_BATCHES;
 
   const isDisabled = !locationA || !locationB || isLoading || isRescanning;
 
@@ -42,6 +45,7 @@ export default function ResultsPage() {
     if (initialA && initialB) {
       void handleFindMidpoint(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
@@ -96,16 +100,21 @@ export default function ResultsPage() {
     setActiveBatchIndex((i) => Math.max(0, i - 1));
   };
 
+  const handleNextBatch = () => {
+    if (!canGoNextStored) return;
+    setNoMoreOptionsMessage(null);
+    setActiveBatchIndex((i) => Math.min(lastBatchIndex, i + 1));
+  };
+
   const handleSeeDifferentOptions = async () => {
     if (!midpoint) return;
 
-    if (canGoForwardStored) {
-      setNoMoreOptionsMessage(null);
-      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+    if (!isOnLastBatch) {
+      handleNextBatch();
       return;
     }
 
-    if (batches.length < TOTAL_BATCHES) {
+    if (isOnLastBatch && canRescanMore) {
       setNoMoreOptionsMessage(null);
       await handleRescanPlaces();
       return;
@@ -208,7 +217,6 @@ export default function ResultsPage() {
         }
       }
 
-      // Exhausted unique options → gentle inline nudge, not an error box.
       setNoMoreOptionsMessage("Try adjusting your locations for more options.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn’t refresh options. Try again.");
@@ -298,6 +306,7 @@ export default function ResultsPage() {
             sides—plus nearby places that actually feel good to meet at.
           </p>
 
+          {/* INPUTS */}
           <div style={{ display: "grid", gap: "var(--space-md)" }}>
             <div>
               <div
@@ -378,6 +387,7 @@ export default function ResultsPage() {
 
         {/* RIGHT COLUMN */}
         <div ref={resultsRef}>
+          {/* MAP PLACEHOLDER */}
           <div
             style={{
               width: "100%",
@@ -420,8 +430,10 @@ export default function ResultsPage() {
             </div>
           )}
 
+          {/* RESULTS */}
           {places.length > 0 && (
             <div>
+              {/* HEADER + NAVIGATION */}
               <div
                 style={{
                   display: "flex",
@@ -457,6 +469,7 @@ export default function ResultsPage() {
                       flexWrap: "wrap",
                     }}
                   >
+                    {/* PREVIOUS */}
                     <button
                       type="button"
                       onClick={handlePrevBatch}
@@ -473,24 +486,45 @@ export default function ResultsPage() {
                       Previous results
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => void handleSeeDifferentOptions()}
-                      disabled={isRescanning}
-                      className="midlo-button midlo-button-secondary"
-                      style={{
-                        padding: "6px 12px",
-                        fontSize: "var(--font-size-caption)",
-                        borderRadius: "var(--radius-pill)",
-                        whiteSpace: "nowrap",
-                        opacity: isRescanning ? 0.7 : 1,
-                      }}
-                    >
-                      {isRescanning ? "Finding new options…" : "See different options"}
-                    </button>
+                    {/* NEXT (stored only) */}
+                    {canGoNextStored && (
+                      <button
+                        type="button"
+                        onClick={handleNextBatch}
+                        className="midlo-button midlo-button-secondary"
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "var(--font-size-caption)",
+                          borderRadius: "var(--radius-pill)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Next results
+                      </button>
+                    )}
+
+                    {/* RESCAN (only on last batch) */}
+                    {isOnLastBatch && canRescanMore && (
+                      <button
+                        type="button"
+                        onClick={() => void handleSeeDifferentOptions()}
+                        disabled={isRescanning}
+                        className="midlo-button midlo-button-secondary"
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "var(--font-size-caption)",
+                          borderRadius: "var(--radius-pill)",
+                          whiteSpace: "nowrap",
+                          opacity: isRescanning ? 0.7 : 1,
+                        }}
+                      >
+                        {isRescanning ? "Finding new options…" : "See different options"}
+                      </button>
+                    )}
                   </div>
 
-                  {noMoreOptionsMessage && (
+                  {/* INLINE MESSAGE */}
+                  {isOnLastBatch && !canRescanMore && (
                     <div
                       style={{
                         fontSize: "var(--font-size-caption)",
@@ -498,7 +532,7 @@ export default function ResultsPage() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {noMoreOptionsMessage}
+                      {noMoreOptionsMessage ?? "Try adjusting your locations for more options."}
                     </div>
                   )}
                 </div>
@@ -514,6 +548,7 @@ export default function ResultsPage() {
                 A few places that make meeting in the middle actually feel good.
               </div>
 
+              {/* LIST */}
               <div style={{ display: "grid", gap: "var(--space-sm)" }}>
                 {places.map((p) => (
                   <button
@@ -552,6 +587,7 @@ export default function ResultsPage() {
                 ))}
               </div>
 
+              {/* SHARE BUTTON */}
               <button
                 type="button"
                 onClick={handleShareMidpoint}

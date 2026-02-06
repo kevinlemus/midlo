@@ -50,7 +50,6 @@ export default function ResultsScreen() {
   const seenPlaceKeysRef = React.useRef<Set<string>>(new Set(places.slice(0, 5).map(placeKey)));
 
   React.useEffect(() => {
-    // If the screen is re-used with a new search, reset uniqueness tracking.
     const first = places.slice(0, 5);
     setBatches([first]);
     setActiveBatchIndex(0);
@@ -59,8 +58,11 @@ export default function ResultsScreen() {
     setNoMoreOptionsMessage(null);
   }, [midpoint?.lat, midpoint?.lng, locationA, locationB]);
 
+  const lastBatchIndex = Math.max(0, batches.length - 1);
   const canGoPrev = activeBatchIndex > 0;
-  const canGoForwardStored = activeBatchIndex < batches.length - 1;
+  const canGoNextStored = activeBatchIndex < lastBatchIndex;
+  const isOnLastBatch = activeBatchIndex === lastBatchIndex;
+  const canRescanMore = batches.length < TOTAL_BATCHES;
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
@@ -68,16 +70,21 @@ export default function ResultsScreen() {
     setActiveBatchIndex((i) => Math.max(0, i - 1));
   };
 
+  const handleNextBatch = () => {
+    if (!canGoNextStored) return;
+    setNoMoreOptionsMessage(null);
+    setActiveBatchIndex((i) => Math.min(lastBatchIndex, i + 1));
+  };
+
   const handleSeeDifferentOptions = async () => {
     if (!midpoint) return;
 
-    if (canGoForwardStored) {
-      setNoMoreOptionsMessage(null);
-      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+    if (!isOnLastBatch) {
+      handleNextBatch();
       return;
     }
 
-    if (batches.length < TOTAL_BATCHES) {
+    if (isOnLastBatch && canRescanMore) {
       setNoMoreOptionsMessage(null);
       await handleRescan();
       return;
@@ -87,7 +94,6 @@ export default function ResultsScreen() {
   };
 
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
-    // mulberry32
     const rand = (() => {
       let t = seed >>> 0;
       return () => {
@@ -106,7 +112,11 @@ export default function ResultsScreen() {
     return copy;
   };
 
-  const pickFiveUnique = (candidates: typeof currentPlaces, exclude: typeof currentPlaces, seed: number) => {
+  const pickFiveUnique = (
+    candidates: typeof currentPlaces,
+    exclude: typeof currentPlaces,
+    seed: number
+  ) => {
     const excludeKeys = new Set(exclude.map(placeKey));
     const uniq: typeof currentPlaces = [];
     const seen = new Set<string>();
@@ -172,11 +182,15 @@ export default function ResultsScreen() {
           attempt === 0
             ? { lat: midpoint.lat, lng: midpoint.lng }
             : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
+
         // eslint-disable-next-line no-await-in-loop
         const batch = await api.getPlaces(coords.lat, coords.lng);
         pool = pool.concat(batch);
 
-        const next = pickFiveUnique(pool, current, seed).filter((p) => !seenKeys.has(placeKey(p)));
+        const next = pickFiveUnique(pool, current, seed).filter(
+          (p) => !seenKeys.has(placeKey(p))
+        );
+
         if (next.length >= 5) {
           chosen = next.slice(0, 5);
           break;
@@ -188,7 +202,7 @@ export default function ResultsScreen() {
         setBatches((prev) => [...prev, chosen]);
         setActiveBatchIndex(nextIndex);
         for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
-        // Keep route params in sync so navigating away/back (or remount) respects the rescan.
+
         navigation.setParams({ places: chosen });
 
         setRescanCount((c) => c + 1);
@@ -199,9 +213,11 @@ export default function ResultsScreen() {
           placesCount: 5,
           source: 'results_rescan',
         });
+      } else {
+        setNoMoreOptionsMessage('Try adjusting your locations for more options.');
       }
     } catch {
-      // ignore for now
+      // ignore
     } finally {
       setIsRescanning(false);
     }
@@ -290,7 +306,7 @@ export default function ResultsScreen() {
             </View>
           </View>
 
-          {/* Primary actions */}
+          {/* NAVIGATION BUTTONS */}
           <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.lg }}>
             <MidloButton
               title="View on map"
@@ -306,6 +322,7 @@ export default function ResultsScreen() {
                   justifyContent: 'space-between',
                 }}
               >
+                {/* PREVIOUS */}
                 <Pressable
                   onPress={handlePrevBatch}
                   disabled={!canGoPrev}
@@ -333,15 +350,47 @@ export default function ResultsScreen() {
                   </Text>
                 </Pressable>
 
-                <MidloButton
-                  title={isRescanning ? 'Finding new options…' : 'See different options'}
-                  onPress={() => void handleSeeDifferentOptions()}
-                  variant="secondary"
-                  disabled={isRescanning}
-                />
+                {/* NEXT (stored only) */}
+                {canGoNextStored && (
+                  <Pressable
+                    onPress={handleNextBatch}
+                    style={({ pressed }) => [
+                      {
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        borderRadius: theme.radii.pill,
+                        borderWidth: 1,
+                        borderColor: theme.colors.divider,
+                        backgroundColor: theme.colors.surface,
+                      },
+                      pressed ? { backgroundColor: theme.colors.highlight } : null,
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        fontSize: theme.typography.caption,
+                        color: theme.colors.primaryDark,
+                        fontWeight: theme.typography.weight.medium as any,
+                      }}
+                    >
+                      Next results
+                    </Text>
+                  </Pressable>
+                )}
+
+                {/* RESCAN (only on last batch) */}
+                {isOnLastBatch && canRescanMore && (
+                  <MidloButton
+                    title={isRescanning ? 'Finding new options…' : 'See different options'}
+                    onPress={() => void handleSeeDifferentOptions()}
+                    variant="secondary"
+                    disabled={isRescanning}
+                  />
+                )}
               </View>
 
-              {noMoreOptionsMessage ? (
+              {/* INLINE MESSAGE */}
+              {isOnLastBatch && !canRescanMore && (
                 <Text
                   style={{
                     fontSize: theme.typography.caption,
@@ -349,12 +398,13 @@ export default function ResultsScreen() {
                     textAlign: 'right',
                   }}
                 >
-                  {noMoreOptionsMessage}
+                  {noMoreOptionsMessage ?? 'Try adjusting your locations for more options.'}
                 </Text>
-              ) : null}
+              )}
             </View>
           </View>
 
+          {/* RESULTS LIST */}
           <View
             style={{
               borderTopWidth: 1,
@@ -426,7 +476,6 @@ export default function ResultsScreen() {
               ))}
             </View>
 
-            {/* Share link – clearly associated with this list */}
             <View style={{ marginTop: theme.spacing.lg }}>
               <MidloButton
                 title="Share this midpoint & list"
