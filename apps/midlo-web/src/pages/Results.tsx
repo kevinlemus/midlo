@@ -21,6 +21,7 @@ export default function ResultsPage() {
   const [batches, setBatches] = useState<Place[][]>([]);
   const [activeBatchIndex, setActiveBatchIndex] = useState(0);
   const places = batches[activeBatchIndex] ?? [];
+
   const [isLoading, setIsLoading] = useState(false);
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
@@ -30,32 +31,10 @@ export default function ResultsPage() {
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
 
+  const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
+
   const canGoPrev = activeBatchIndex > 0;
   const canGoForwardStored = activeBatchIndex < batches.length - 1;
-
-  const handlePrevBatch = () => {
-    if (!canGoPrev) return;
-    setNoMoreOptionsMessage(null);
-    setActiveBatchIndex((i) => Math.max(0, i - 1));
-  };
-
-  const handleSeeDifferentOptions = async () => {
-    if (!midpoint) return;
-
-    if (canGoForwardStored) {
-      setNoMoreOptionsMessage(null);
-      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
-      return;
-    }
-
-    if (batches.length < TOTAL_BATCHES) {
-      setNoMoreOptionsMessage(null);
-      await handleRescanPlaces();
-      return;
-    }
-
-    setNoMoreOptionsMessage("Try adjusting your locations for more options.");
-  };
 
   const isDisabled = !locationA || !locationB || isLoading || isRescanning;
 
@@ -65,10 +44,7 @@ export default function ResultsPage() {
     }
   }, []);
 
-  const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
-
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
-    // mulberry32
     const rand = (() => {
       let t = seed >>> 0;
       return () => {
@@ -108,10 +84,34 @@ export default function ResultsPage() {
 
   const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
     const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
-    const radiusDeg = 0.0015 + attempt * 0.001; // ~150m → ~450m-ish
+    const radiusDeg = 0.0015 + attempt * 0.001;
     const latDelta = Math.cos(angle) * radiusDeg;
     const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
     return { lat: lat + latDelta, lng: lng + lngDelta };
+  };
+
+  const handlePrevBatch = () => {
+    if (!canGoPrev) return;
+    setNoMoreOptionsMessage(null);
+    setActiveBatchIndex((i) => Math.max(0, i - 1));
+  };
+
+  const handleSeeDifferentOptions = async () => {
+    if (!midpoint) return;
+
+    if (canGoForwardStored) {
+      setNoMoreOptionsMessage(null);
+      setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
+      return;
+    }
+
+    if (batches.length < TOTAL_BATCHES) {
+      setNoMoreOptionsMessage(null);
+      await handleRescanPlaces();
+      return;
+    }
+
+    setNoMoreOptionsMessage("Try adjusting your locations for more options.");
   };
 
   const handleFindMidpoint = async (fromQuery = false) => {
@@ -174,13 +174,21 @@ export default function ResultsPage() {
       const seenKeys = new Set(seenPlaceKeysRef.current);
 
       let pool: Place[] = [];
-      // Try a few small jitters around the midpoint to encourage variety.
+
       for (let attempt = 0; attempt < 8; attempt++) {
-        const coords = attempt === 0 ? { lat: midpoint.lat, lng: midpoint.lng } : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
+        const coords =
+          attempt === 0
+            ? { lat: midpoint.lat, lng: midpoint.lng }
+            : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
+
         // eslint-disable-next-line no-await-in-loop
         const batch = await api.getPlaces(coords.lat, coords.lng);
         pool = pool.concat(batch);
-        const next = pickFiveUnique(pool, current, seed).filter((p) => !seenKeys.has(placeKey(p)));
+
+        const next = pickFiveUnique(pool, current, seed).filter(
+          (p) => !seenKeys.has(placeKey(p)),
+        );
+
         if (next.length >= 5) {
           const chosen = next.slice(0, 5);
           const nextIndex = batches.length;
@@ -188,17 +196,20 @@ export default function ResultsPage() {
           setActiveBatchIndex(nextIndex);
           for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
           setRescanCount((c) => c + 1);
+
           track("places_rescanned" as Parameters<typeof track>[0], {
             locationA,
             locationB,
             placesCount: 5,
             source: "results_rescan",
           });
+
           return;
         }
       }
 
-      setError("No more unique options nearby. Try adjusting your locations.");
+      // Exhausted unique options → gentle inline nudge, not an error box.
+      setNoMoreOptionsMessage("Try adjusting your locations for more options.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn’t refresh options. Try again.");
     } finally {
@@ -287,7 +298,6 @@ export default function ResultsPage() {
             sides—plus nearby places that actually feel good to meet at.
           </p>
 
-          {/* INPUTS */}
           <div style={{ display: "grid", gap: "var(--space-md)" }}>
             <div>
               <div
@@ -368,7 +378,6 @@ export default function ResultsPage() {
 
         {/* RIGHT COLUMN */}
         <div ref={resultsRef}>
-          {/* MAP PLACEHOLDER */}
           <div
             style={{
               width: "100%",
@@ -411,10 +420,8 @@ export default function ResultsPage() {
             </div>
           )}
 
-          {/* RESULTS */}
           {places.length > 0 && (
             <div>
-              {/* HEADER + RESCAN */}
               <div
                 style={{
                   display: "flex",
@@ -438,7 +445,7 @@ export default function ResultsPage() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "flex-end",
-                    gap: "2px",
+                    gap: 2,
                   }}
                 >
                   <div
@@ -507,7 +514,6 @@ export default function ResultsPage() {
                 A few places that make meeting in the middle actually feel good.
               </div>
 
-              {/* LIST */}
               <div style={{ display: "grid", gap: "var(--space-sm)" }}>
                 {places.map((p) => (
                   <button
@@ -546,7 +552,6 @@ export default function ResultsPage() {
                 ))}
               </div>
 
-              {/* SHARE BUTTON — MOVED DOWN */}
               <button
                 type="button"
                 onClick={handleShareMidpoint}

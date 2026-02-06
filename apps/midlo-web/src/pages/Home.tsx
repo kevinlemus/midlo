@@ -40,13 +40,12 @@ export default function Home() {
 
   const isDisabled = !aText || !bText;
 
-  // Scroll target for results
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const fromQueryRef = useRef(false);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
 
-  // ⭐ On load: if URL has ?a= & ?b=, load results + scroll.
-  // If URL has NO params, clear everything (fresh home).
+  const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
+
   useEffect(() => {
     const a = searchParams.get("a") ?? "";
     const b = searchParams.get("b") ?? "";
@@ -55,7 +54,6 @@ export default function Home() {
     const hasQuery = Boolean(a && b);
 
     if (!hasQuery) {
-      // Fresh home page → clean slate
       setAText("");
       setBText("");
       setMidpoint(null);
@@ -67,7 +65,6 @@ export default function Home() {
       return;
     }
 
-    // If query params exist → load results
     setAText(a);
     setBText(b);
     fromQueryRef.current = true;
@@ -78,8 +75,10 @@ export default function Home() {
         setError(null);
         setRescanCount(0);
         setNoMoreOptionsMessage(null);
+
         const mp = await api.getMidpoint(a, b);
         setMidpoint(mp);
+
         if (snapshot?.length) {
           setBatches([snapshot]);
           setActiveBatchIndex(0);
@@ -93,7 +92,6 @@ export default function Home() {
           setSearchParams({ a, b, pl: encodePlacesSnapshotParam(next) }, { replace: true });
         }
 
-        // Auto-scroll to results
         setTimeout(() => {
           if (resultsRef.current) {
             const rect = resultsRef.current.getBoundingClientRect();
@@ -109,10 +107,7 @@ export default function Home() {
     })();
   }, []);
 
-  const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
-
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
-    // mulberry32
     const rand = (() => {
       let t = seed >>> 0;
       return () => {
@@ -136,7 +131,9 @@ export default function Home() {
     const uniq: Place[] = [];
     const seen = new Set<string>();
 
-    for (const p of candidates) {
+    const randomized = shuffleWithSeed(candidates, seed);
+
+    for (const p of randomized) {
       const k = placeKey(p);
       if (excludeKeys.has(k)) continue;
       if (seen.has(k)) continue;
@@ -144,8 +141,6 @@ export default function Home() {
       uniq.push(p);
       if (uniq.length >= 5) break;
     }
-
-    if (uniq.length >= 5) return uniq;
 
     return uniq;
   };
@@ -158,7 +153,6 @@ export default function Home() {
     return { lat: lat + latDelta, lng: lng + lngDelta };
   };
 
-  // ⭐ Inline search
   const handleFind = async () => {
     if (isDisabled || isLoading) return;
     setIsLoading(true);
@@ -187,10 +181,8 @@ export default function Home() {
       setActiveBatchIndex(0);
       seenPlaceKeysRef.current = new Set(next.map(placeKey));
 
-      // Update URL (persist the exact list too)
       setSearchParams({ a: aText, b: bText, pl: encodePlacesSnapshotParam(next) }, { replace: true });
 
-      // Scroll to results
       setTimeout(() => {
         if (resultsRef.current) {
           const rect = resultsRef.current.getBoundingClientRect();
@@ -205,7 +197,6 @@ export default function Home() {
     }
   };
 
-  // ⭐ Share midpoint
   const handleShare = async () => {
     const shareUrl = new URL("/share/midpoint", window.location.origin);
     if (aText) shareUrl.searchParams.set("a", aText);
@@ -216,7 +207,6 @@ export default function Home() {
 
     track("midpoint_shared", { shareUrl: urlString });
 
-    // Clean share (URL only)
     if ((navigator as any).share) {
       try {
         await (navigator as any).share({
@@ -235,7 +225,6 @@ export default function Home() {
     }
   };
 
-  // ⭐ Clear button
   const handleClear = () => {
     setAText("");
     setBText("");
@@ -261,28 +250,25 @@ export default function Home() {
   const handleSeeDifferentOptions = async () => {
     if (!midpoint) return;
 
-    // If we already generated future batches, just navigate forward.
     if (canGoForwardStored) {
       setNoMoreOptionsMessage(null);
       setActiveBatchIndex((i) => Math.min(batches.length - 1, i + 1));
       return;
     }
 
-    // Otherwise, generate the next batch (up to TOTAL_BATCHES).
     if (batches.length < TOTAL_BATCHES) {
       setNoMoreOptionsMessage(null);
       await handleRescan();
       return;
     }
 
-    // Past the final batch.
     setNoMoreOptionsMessage("Try adjusting your locations for more options.");
   };
 
-  // ⭐ Rescan nearby places (keep midpoint fixed, refresh vibes)
   const handleRescan = async () => {
     if (!midpoint || isRescanning) return;
     if (rescanCount >= MAX_RESCANS_PER_SEARCH) return;
+
     setIsRescanning(true);
     setError(null);
 
@@ -292,17 +278,22 @@ export default function Home() {
       const seenKeys = new Set(seenPlaceKeysRef.current);
 
       let chosen: Place[] | null = null;
-
       let pool: Place[] = [];
+
       for (let attempt = 0; attempt < 8; attempt++) {
         const coords =
           attempt === 0
             ? { lat: midpoint.lat, lng: midpoint.lng }
             : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
+
         // eslint-disable-next-line no-await-in-loop
         const batch = await api.getPlaces(coords.lat, coords.lng);
         pool = pool.concat(batch);
-        const next = pickFiveUnique(pool, current, seed).filter((p) => !seenKeys.has(placeKey(p)));
+
+        const next = pickFiveUnique(pool, current, seed).filter(
+          (p) => !seenKeys.has(placeKey(p)),
+        );
+
         if (next.length >= 5) {
           chosen = next.slice(0, 5);
           break;
@@ -314,6 +305,7 @@ export default function Home() {
         setBatches((prev) => [...prev, chosen]);
         setActiveBatchIndex(nextIndex);
         for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
+
         const a = aText || "";
         const b = bText || "";
         const nextParams: Record<string, string> = {};
@@ -331,7 +323,8 @@ export default function Home() {
           source: fromQueryRef.current ? "query_params" : "inline",
         });
       } else {
-        setError("No more unique options nearby. Try a new search.");
+        // Exhausted unique options → gentle inline nudge, not an error box.
+        setNoMoreOptionsMessage("Try adjusting your locations for more options.");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
@@ -367,7 +360,6 @@ export default function Home() {
       >
         <OpenInAppBanner context="home" />
 
-        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "var(--space-lg)" }}>
           <div
             style={{
@@ -423,7 +415,6 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Inputs */}
         <div style={{ display: "grid", gap: "var(--space-md)" }}>
           <div>
             <div
@@ -463,9 +454,7 @@ export default function Home() {
             />
 
             {midpoint && (
-              <>
-                <Button title="Clear" onClick={handleClear} variant="secondary" />
-              </>
+              <Button title="Clear" onClick={handleClear} variant="secondary" />
             )}
           </div>
 
@@ -514,7 +503,6 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Midpoint + map + results */}
         <div ref={resultsRef} style={{ marginTop: "var(--space-lg)" }}>
           <MapView height={240} hasMidpoint={Boolean(midpoint)} placesCount={places.length} />
 
@@ -549,7 +537,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Skeletons */}
           {isLoading && !places.length && (
             <div
               style={{
@@ -590,7 +577,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Places */}
           {places.length > 0 && (
             <div style={{ marginTop: "var(--space-lg)" }}>
               <div
@@ -674,7 +660,7 @@ export default function Home() {
                         style={{
                           fontSize: "var(--font-size-caption)",
                           color: "var(--color-muted)",
-                          marginTop: "2px",
+                          marginTop: 2,
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -727,7 +713,11 @@ export default function Home() {
               </div>
 
               <div style={{ marginTop: "var(--space-lg)" }}>
-                <Button title="Share this midpoint & list" onClick={handleShare} variant="secondary" />
+                <Button
+                  title="Share this midpoint & list"
+                  onClick={handleShare}
+                  variant="secondary"
+                />
               </div>
             </div>
           )}
