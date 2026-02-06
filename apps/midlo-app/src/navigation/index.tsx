@@ -18,6 +18,14 @@ export type RootStackParamList = {
     places: Place[];
     locationA: string;
     locationB: string;
+
+		// Persisted state so back-navigation (e.g. from Place) restores the same batch.
+		resultsKey?: string;
+		resultsState?: {
+			batches: Place[][];
+			activeBatchIndex: number;
+			rescanCount: number;
+		};
   };
   Map: {
     midpoint: { lat: number; lng: number };

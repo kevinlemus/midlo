@@ -46,6 +46,13 @@ export default function Home() {
 
   const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
 
+  const storageKey = React.useMemo(() => {
+    const a = (aText ?? "").trim();
+    const b = (bText ?? "").trim();
+    if (!a || !b) return null;
+    return `midlo:web:home-results:${a}|${b}`;
+  }, [aText, bText]);
+
   useEffect(() => {
     const a = searchParams.get("a") ?? "";
     const b = searchParams.get("b") ?? "";
@@ -68,6 +75,44 @@ export default function Home() {
     setAText(a);
     setBText(b);
     fromQueryRef.current = true;
+
+    // Restore full batches state if we have it (e.g. back-navigation from a place page).
+    try {
+      const key = a && b ? `midlo:web:home-results:${a}|${b}` : null;
+      if (key) {
+        const raw = sessionStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (
+            parsed &&
+            parsed.midpoint &&
+            typeof parsed.midpoint.lat === "number" &&
+            typeof parsed.midpoint.lng === "number" &&
+            Array.isArray(parsed.batches) &&
+            typeof parsed.activeBatchIndex === "number"
+          ) {
+            setMidpoint(parsed.midpoint);
+            setBatches(parsed.batches);
+            const max = Math.max(0, parsed.batches.length - 1);
+            setActiveBatchIndex(Math.max(0, Math.min(max, parsed.activeBatchIndex)));
+            setRescanCount(typeof parsed.rescanCount === "number" ? parsed.rescanCount : 0);
+            const allPlaces: Place[] = parsed.batches.flat();
+            seenPlaceKeysRef.current = new Set(allPlaces.map(placeKey));
+            setNoMoreOptionsMessage(null);
+            setTimeout(() => {
+              if (resultsRef.current) {
+                const rect = resultsRef.current.getBoundingClientRect();
+                const top = window.scrollY + rect.top - 24;
+                window.scrollTo({ top, behavior: "smooth" });
+              }
+            }, 120);
+            return;
+          }
+        }
+      }
+    } catch {
+      // ignore restore failures
+    }
 
     (async () => {
       try {
@@ -106,6 +151,25 @@ export default function Home() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!storageKey) return;
+    if (!midpoint) return;
+    if (!batches.length) return;
+    try {
+      sessionStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          midpoint,
+          batches,
+          activeBatchIndex,
+          rescanCount,
+        }),
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }, [storageKey, midpoint, batches, activeBatchIndex, rescanCount]);
 
   const shuffleWithSeed = <T,>(items: T[], seed: number): T[] => {
     const rand = (() => {
@@ -226,6 +290,13 @@ export default function Home() {
   };
 
   const handleClear = () => {
+    if (storageKey) {
+      try {
+        sessionStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
+    }
     setAText("");
     setBText("");
     setMidpoint(null);

@@ -29,7 +29,8 @@ export default function ResultsScreen() {
     useNavigation<import('@react-navigation/native').NavigationProp<RootStackParamList>>();
   const route = useRoute<ResultsRoute>();
 
-  const { midpoint, places, locationA, locationB } = route.params;
+  const { midpoint, places, locationA, locationB, resultsKey: initialResultsKey, resultsState } =
+    route.params;
 
   const MAX_RESCANS_PER_SEARCH = 5;
   const TOTAL_BATCHES = MAX_RESCANS_PER_SEARCH + 1;
@@ -40,23 +41,96 @@ export default function ResultsScreen() {
     return p.placeId || `${p.name}__${p.distance}`;
   }
 
-  const [batches, setBatches] = React.useState<PlaceT[][]>(() => [places.slice(0, 5)]);
-  const [activeBatchIndex, setActiveBatchIndex] = React.useState(0);
+  const makeResultsKey = React.useCallback(() => {
+    const a = (locationA ?? '').trim();
+    const b = (locationB ?? '').trim();
+    const lat = typeof midpoint?.lat === 'number' ? midpoint.lat.toFixed(6) : '';
+    const lng = typeof midpoint?.lng === 'number' ? midpoint.lng.toFixed(6) : '';
+    return `${a}|${b}|${lat}|${lng}`;
+  }, [locationA, locationB, midpoint?.lat, midpoint?.lng]);
+
+  const currentResultsKey = makeResultsKey();
+  const hasSavedState =
+    Boolean(resultsState) &&
+    Boolean(initialResultsKey) &&
+    initialResultsKey === currentResultsKey &&
+    Array.isArray(resultsState?.batches) &&
+    typeof resultsState?.activeBatchIndex === 'number';
+
+  const [batches, setBatches] = React.useState<PlaceT[][]>(() => {
+    if (hasSavedState) {
+      return (resultsState!.batches as PlaceT[][]).filter((b) => Array.isArray(b));
+    }
+    return [places.slice(0, 5)];
+  });
+  const [activeBatchIndex, setActiveBatchIndex] = React.useState(() => {
+    if (hasSavedState) {
+      const idx = resultsState!.activeBatchIndex;
+      const max = Math.max(0, (resultsState!.batches?.length ?? 1) - 1);
+      return Math.max(0, Math.min(max, idx));
+    }
+    return 0;
+  });
   const currentPlaces = batches[activeBatchIndex] ?? [];
   const [isRescanning, setIsRescanning] = React.useState(false);
-  const [rescanCount, setRescanCount] = React.useState(0);
+  const [rescanCount, setRescanCount] = React.useState(() => {
+    if (hasSavedState && typeof resultsState!.rescanCount === 'number') {
+      return resultsState!.rescanCount;
+    }
+    return 0;
+  });
   const [noMoreOptionsMessage, setNoMoreOptionsMessage] = React.useState<string | null>(null);
 
-  const seenPlaceKeysRef = React.useRef<Set<string>>(new Set(places.slice(0, 5).map(placeKey)));
+  const seenPlaceKeysRef = React.useRef<Set<string>>(
+    new Set(
+      (hasSavedState
+        ? (resultsState!.batches as PlaceT[][]).flat().map(placeKey)
+        : places.slice(0, 5).map(placeKey)) as string[],
+    ),
+  );
 
+  const prevResultsKeyRef = React.useRef<string | null>(null);
   React.useEffect(() => {
+    if (prevResultsKeyRef.current == null) {
+      prevResultsKeyRef.current = currentResultsKey;
+      return;
+    }
+    if (prevResultsKeyRef.current === currentResultsKey) {
+      return;
+    }
+
+    // New search → reset in-memory state.
     const first = places.slice(0, 5);
     setBatches([first]);
     setActiveBatchIndex(0);
     seenPlaceKeysRef.current = new Set(first.map(placeKey));
     setRescanCount(0);
     setNoMoreOptionsMessage(null);
-  }, [midpoint?.lat, midpoint?.lng, locationA, locationB]);
+    prevResultsKeyRef.current = currentResultsKey;
+  }, [currentResultsKey, places]);
+
+  // Persist batches + active index into route params so back-navigation restores correctly
+  // even if the screen is temporarily unmounted.
+  const lastPersistedRef = React.useRef<string>('');
+  React.useEffect(() => {
+    try {
+      const payload = {
+        resultsKey: currentResultsKey,
+        resultsState: {
+          batches,
+          activeBatchIndex,
+          rescanCount,
+        },
+      };
+      const serialized = JSON.stringify(payload);
+      if (serialized === lastPersistedRef.current) return;
+      lastPersistedRef.current = serialized;
+
+      navigation.setParams(payload as any);
+    } catch {
+      // ignore persistence failures
+    }
+  }, [batches, activeBatchIndex, rescanCount, currentResultsKey, navigation]);
 
   const lastBatchIndex = Math.max(0, batches.length - 1);
   const canGoPrev = activeBatchIndex > 0;
@@ -202,8 +276,6 @@ export default function ResultsScreen() {
         setBatches((prev) => [...prev, chosen]);
         setActiveBatchIndex(nextIndex);
         for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
-
-        navigation.setParams({ places: chosen });
 
         setRescanCount((c) => c + 1);
 
