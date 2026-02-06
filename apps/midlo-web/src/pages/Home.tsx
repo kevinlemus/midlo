@@ -17,6 +17,40 @@ import {
 
 import midloLogo from "../assets/midlo_logo.png";
 
+function decodePlaceIdBatchesParam(raw: string | null): string[][] | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const batches = trimmed
+    .split("|")
+    .map((b) => b.split(",").map((s) => s.trim()).filter(Boolean))
+    .filter((b) => b.length > 0);
+  return batches.length ? batches : null;
+}
+
+function haversineMiles(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 3958.7613;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const h =
+    sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function formatMiles(mi: number): string {
+  if (!Number.isFinite(mi)) return "";
+  if (mi < 10) return `${mi.toFixed(1)} mi`;
+  return `${Math.round(mi)} mi`;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -61,6 +95,7 @@ export default function Home() {
     const a = searchParams.get("a") ?? "";
     const b = searchParams.get("b") ?? "";
     const snapshot = decodePlacesSnapshotParam(searchParams.get("pl"));
+    const sharedBatches = decodePlaceIdBatchesParam(searchParams.get("p"));
 
     const hasQuery = Boolean(a && b);
 
@@ -79,6 +114,71 @@ export default function Home() {
     setAText(a);
     setBText(b);
     fromQueryRef.current = true;
+
+    if (sharedBatches?.length) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          setError(null);
+          setNoMoreOptionsMessage(null);
+
+          const mp = await api.getMidpoint(a, b);
+          setMidpoint(mp);
+
+          const uniqueIds = Array.from(new Set(sharedBatches.flat()));
+          const detailsPairs = await Promise.all(
+            uniqueIds.map(async (placeId) => {
+              try {
+                const d = await api.getPlaceDetails(placeId);
+                return [placeId, d] as const;
+              } catch {
+                return [placeId, null] as const;
+              }
+            }),
+          );
+          const detailsById = new Map(detailsPairs);
+
+          const nextBatches: Place[][] = sharedBatches
+            .map((batch) => {
+              const places: Place[] = [];
+              for (const placeId of batch) {
+                const d = detailsById.get(placeId);
+                if (!d) continue;
+                const mi = haversineMiles(mp, { lat: d.lat, lng: d.lng });
+                places.push({
+                  placeId,
+                  name: d.name ?? "Place",
+                  distance: formatMiles(mi),
+                  lat: d.lat,
+                  lng: d.lng,
+                });
+              }
+              return places;
+            })
+            .filter((batch) => batch.length > 0);
+
+          setBatches(nextBatches);
+          setActiveBatchIndex(Math.max(0, nextBatches.length - 1));
+          setRescanCount(Math.max(0, nextBatches.length - 1));
+          seenPlaceKeysRef.current = new Set(nextBatches.flat().map(placeKey));
+
+          setTimeout(() => {
+            if (resultsRef.current) {
+              const rect = resultsRef.current.getBoundingClientRect();
+              const top = window.scrollY + rect.top - 24;
+              window.scrollTo({ top, behavior: "smooth" });
+            }
+          }, 120);
+        } catch (e) {
+          setError(
+            e instanceof Error ? e.message : "Something went wrong. Try again.",
+          );
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+      return;
+    }
 
     // Restore full batches state if we have it (e.g. back-navigation from a place page).
     try {
@@ -295,8 +395,22 @@ export default function Home() {
     const shareUrl = new URL("/share/midpoint", window.location.origin);
     if (aText) shareUrl.searchParams.set("a", aText);
     if (bText) shareUrl.searchParams.set("b", bText);
-    // IMPORTANT: do not include list snapshots in the share URL.
-    // Some apps (e.g. Instagram) fail to send very long links.
+
+    // Share every batch scanned so far (place IDs only), so recipients see the
+    // full history up to the current batch.
+    if (batches.length) {
+      const upTo = batches.slice(0, activeBatchIndex + 1);
+      const placeIdBatches = upTo
+        .map((batch) => batch.map((p) => p.placeId).filter(Boolean))
+        .filter((batch) => batch.length > 0);
+
+      if (placeIdBatches.length) {
+        shareUrl.searchParams.set(
+          "p",
+          placeIdBatches.map((b) => b.join(",")).join("|"),
+        );
+      }
+    }
 
     const urlString = shareUrl.toString();
 

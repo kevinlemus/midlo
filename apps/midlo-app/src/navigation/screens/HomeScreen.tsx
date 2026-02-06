@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -70,9 +71,11 @@ export default function HomeScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View
-          style={{
-            flex: 1,
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
+          contentContainerStyle={{
+            flexGrow: 1,
             justifyContent: 'center',
             alignItems: 'center',
             paddingHorizontal: theme.spacing.xl,
@@ -223,7 +226,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           </MidloCard>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

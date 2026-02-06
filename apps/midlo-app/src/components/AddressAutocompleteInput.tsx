@@ -5,6 +5,7 @@ import {
   Pressable,
   ActivityIndicator,
   Keyboard,
+  ScrollView,
   StyleSheet,
   Animated,
   Easing,
@@ -199,26 +200,34 @@ export default function AddressAutocompleteInput({
         >
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {suggestions.map((s) => (
-            <Pressable
-              key={s.placeId || s.description}
-              onPress={() => pick(s)}
-              style={({ pressed }) => [
-                styles.row,
-                pressed ? styles.rowPressed : null,
-              ]}
-            >
-              <Text numberOfLines={2} style={styles.rowText}>
-                {s.description}
-              </Text>
-            </Pressable>
-          ))}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            style={{ maxHeight: 260 }}
+          >
+            {suggestions.map((s) => (
+              <Pressable
+                key={s.placeId || s.description}
+                onPress={() => pick(s)}
+                style={({ pressed }) => [
+                  styles.row,
+                  pressed ? styles.rowPressed : null,
+                ]}
+              >
+                <Text numberOfLines={2} style={styles.rowText}>
+                  {s.description}
+                </Text>
+              </Pressable>
+            ))}
 
-          {loading && suggestions.length === 0 ? (
-            <Text style={styles.hintText}>Searching…</Text>
-          ) : !loading && !error && suggestions.length === 0 ? (
-            <Text style={styles.hintText}>No matches. Try adding a street or city.</Text>
-          ) : null}
+            {loading && suggestions.length === 0 ? (
+              <Text style={styles.hintText}>Searching…</Text>
+            ) : !loading && !error && suggestions.length === 0 ? (
+              <Text style={styles.hintText}>
+                No matches. Try adding a street or city.
+              </Text>
+            ) : null}
+          </ScrollView>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Powered by Google</Text>
@@ -255,7 +264,6 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.divider,
     backgroundColor: theme.colors.surface,
     overflow: 'hidden',
-    maxHeight: 260,
     ...theme.shadow.card,
   },
   row: {

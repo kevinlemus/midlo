@@ -251,7 +251,12 @@ export default function ResultsScreen() {
 
   const handleShare = async () => {
     try {
-      const url = midpointShareUrl(locationA, locationB, currentPlaces);
+      const upTo = batches.slice(0, activeBatchIndex + 1);
+      const placeIdBatches = upTo
+        .map((batch) => batch.map((p) => p.placeId).filter(Boolean))
+        .filter((batch) => batch.length > 0);
+
+      const url = midpointShareUrl(locationA, locationB, placeIdBatches);
 
       if (Platform.OS === "ios") {
         await Share.share({ url });

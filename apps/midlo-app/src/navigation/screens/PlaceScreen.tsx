@@ -99,10 +99,14 @@ export default function PlaceScreen() {
       const url = placeShareUrl(placeId);
 
       const name = details?.name ?? "Place";
-      const address = details?.formattedAddress ?? "";
-      const message = `Meet in the middle with Midlo:\n\n${name}${address ? `\n${address}` : ""}\n\n${url}`;
 
-      await Share.share({ title: name, message, url });
+      // iOS: providing a "message" shows extra text under the rich link preview.
+      // Share URL-only to match midlo-web behavior.
+      if (Platform.OS === "ios") {
+        await Share.share({ url });
+      } else {
+        await Share.share({ title: name, message: url });
+      }
     } catch {
       // ignore
     }

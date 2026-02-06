@@ -39,13 +39,26 @@ export function webBaseUrl(): string {
 export function midpointShareUrl(
   locationA: string,
   locationB: string,
-  places?: Place[],
+  placeIdBatches?: string[][],
 ): string {
   const u = new URL("/share/midpoint", webBaseUrl());
   if (locationA) u.searchParams.set("a", locationA);
   if (locationB) u.searchParams.set("b", locationB);
-  // IMPORTANT: do not embed a places snapshot in the URL.
-  // Some apps (notably Instagram) fail to send very long links.
+
+  // Share *all* batches scanned so far, but keep it compact (place IDs only).
+  // Format: batch1Id,batch1Id|batch2Id,...
+  if (Array.isArray(placeIdBatches) && placeIdBatches.length > 0) {
+    const cleaned = placeIdBatches
+      .map((batch) => (Array.isArray(batch) ? batch.filter(Boolean) : []))
+      .filter((batch) => batch.length > 0);
+    if (cleaned.length > 0) {
+      u.searchParams.set(
+        "p",
+        cleaned.map((b) => b.join(",")).join("|"),
+      );
+    }
+  }
+
   return u.toString();
 }
 
