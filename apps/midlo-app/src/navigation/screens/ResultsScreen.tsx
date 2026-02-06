@@ -251,12 +251,18 @@ export default function ResultsScreen() {
 
   const handleShare = async () => {
     try {
-      const upTo = batches.slice(0, activeBatchIndex + 1);
-      const placeIdBatches = upTo
+      // Share all batches we've already loaded (not just up to the current),
+      // but open the shared page on the batch the user is viewing.
+      const placeIdBatches = batches
         .map((batch) => batch.map((p) => p.placeId).filter(Boolean))
         .filter((batch) => batch.length > 0);
 
-      const url = midpointShareUrl(locationA, locationB, placeIdBatches);
+      const url = midpointShareUrl(
+        locationA,
+        locationB,
+        placeIdBatches,
+        activeBatchIndex,
+      );
 
       if (Platform.OS === "ios") {
         await Share.share({ url });

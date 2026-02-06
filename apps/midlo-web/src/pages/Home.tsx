@@ -96,6 +96,10 @@ export default function Home() {
     const b = searchParams.get("b") ?? "";
     const snapshot = decodePlacesSnapshotParam(searchParams.get("pl"));
     const sharedBatches = decodePlaceIdBatchesParam(searchParams.get("p"));
+    const sharedBatchIndexRaw = searchParams.get("bi");
+    const sharedBatchIndex = sharedBatchIndexRaw
+      ? Number.parseInt(sharedBatchIndexRaw, 10)
+      : Number.NaN;
 
     const hasQuery = Boolean(a && b);
 
@@ -158,8 +162,12 @@ export default function Home() {
             .filter((batch) => batch.length > 0);
 
           setBatches(nextBatches);
-          setActiveBatchIndex(Math.max(0, nextBatches.length - 1));
-          setRescanCount(Math.max(0, nextBatches.length - 1));
+          const last = Math.max(0, nextBatches.length - 1);
+          const desired = Number.isFinite(sharedBatchIndex)
+            ? sharedBatchIndex
+            : last;
+          setActiveBatchIndex(Math.max(0, Math.min(last, desired)));
+          setRescanCount(last);
           seenPlaceKeysRef.current = new Set(nextBatches.flat().map(placeKey));
 
           setTimeout(() => {
@@ -396,11 +404,11 @@ export default function Home() {
     if (aText) shareUrl.searchParams.set("a", aText);
     if (bText) shareUrl.searchParams.set("b", bText);
 
-    // Share every batch scanned so far (place IDs only), so recipients see the
-    // full history up to the current batch.
+    // Share every batch scanned so far (place IDs only), and encode which batch
+    // the recipient should land on.
     if (batches.length) {
-      const upTo = batches.slice(0, activeBatchIndex + 1);
-      const placeIdBatches = upTo
+      shareUrl.searchParams.set("bi", String(activeBatchIndex));
+      const placeIdBatches = batches
         .map((batch) => batch.map((p) => p.placeId).filter(Boolean))
         .filter((batch) => batch.length > 0);
 

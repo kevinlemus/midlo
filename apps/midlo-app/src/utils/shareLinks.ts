@@ -40,10 +40,18 @@ export function midpointShareUrl(
   locationA: string,
   locationB: string,
   placeIdBatches?: string[][],
+  startBatchIndex?: number,
 ): string {
   const u = new URL("/share/midpoint", webBaseUrl());
   if (locationA) u.searchParams.set("a", locationA);
   if (locationB) u.searchParams.set("b", locationB);
+
+  // When sharing from an earlier batch, open the shared page on that batch
+  // while still including all already-loaded batches.
+  if (Number.isFinite(startBatchIndex)) {
+    const idx = Math.max(0, Math.floor(startBatchIndex as number));
+    u.searchParams.set("bi", String(idx));
+  }
 
   // Share *all* batches scanned so far, but keep it compact (place IDs only).
   // Format: batch1Id,batch1Id|batch2Id,...

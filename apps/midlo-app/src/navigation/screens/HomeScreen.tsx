@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { track } from '../../services/analytics';
 import {
   Text,
   SafeAreaView,
   View,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from 'theme';
 import type { RootStackParamList } from 'navigation';
@@ -25,8 +27,21 @@ type HomeNav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
+  const insets = useSafeAreaInsets();
   const [locationA, setLocationA] = useState('');
   const [locationB, setLocationB] = useState('');
+
+  const scrollRef = useRef<ScrollView | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,17 +84,23 @@ export default function HomeScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
         <ScrollView
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
+          ref={(r) => {
+            scrollRef.current = r;
+          }}
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="none"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
           contentContainerStyle={{
             flexGrow: 1,
-            justifyContent: 'center',
+            justifyContent: keyboardOpen ? 'flex-start' : 'center',
             alignItems: 'center',
             paddingHorizontal: theme.spacing.xl,
             paddingVertical: theme.spacing.xl,
+            paddingBottom: theme.spacing.xl * 2,
           }}
         >
           <MidloCard>
@@ -160,6 +181,11 @@ export default function HomeScreen() {
                   onChangeText={setLocationA}
                   placeholder="Enter first location"
                   returnKeyType="next"
+                  onFocus={() => {
+                    // Keep the dropdown usable without dismissing the keyboard.
+                    // If the card is partially off-screen, nudge it into view.
+                    scrollRef.current?.scrollTo({ y: 0, animated: true });
+                  }}
                 />
               </View>
 
@@ -180,6 +206,13 @@ export default function HomeScreen() {
                   onChangeText={setLocationB}
                   placeholder="Enter second location"
                   returnKeyType="done"
+                  onFocus={() => {
+                    // Ensure the second field is not covered by the keyboard.
+                    // Using scrollToEnd is reliable across iOS/Android.
+                    requestAnimationFrame(() => {
+                      scrollRef.current?.scrollToEnd({ animated: true });
+                    });
+                  }}
                 />
               </View>
 
