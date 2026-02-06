@@ -78,27 +78,21 @@ public class PlacesService {
 				"museum",
 				"shopping_mall");
 
-		List<QuerySpec> queryPlan = new ArrayList<>();
-		for (String type : types) {
-			queryPlan.add(QuerySpec.nearbyType(type));
-		}
+		List<String> queryPlan = new ArrayList<>(types);
 		Collections.shuffle(queryPlan, random);
 
 		Map<String, Candidate> byPlaceId = new HashMap<>();
 		ApiException lastFailure = null;
 		int queriesRun = 0;
 
-		for (QuerySpec spec : queryPlan) {
+		for (String type : queryPlan) {
 			if (queriesRun >= maxQueries) {
 				break;
 			}
 			int jitteredRadius = jitterRadiusMeters(baseRadiusMeters, random);
 			FetchResult first;
 			try {
-				first = switch (spec.kind) {
-					case NEARBY_TYPE -> fetchNearby(lat, lng, jitteredRadius, spec.value, apiKey, null);
-					case TEXT_KEYWORD -> fetchText(lat, lng, jitteredRadius, spec.value, apiKey, null);
-				};
+				first = fetchNearby(lat, lng, jitteredRadius, type, apiKey);
 			} catch (ApiException e) {
 				lastFailure = e;
 				continue;
@@ -158,7 +152,7 @@ public class PlacesService {
 				new PlaceResponse("mock_place_5", "Mock Coffee", "2.0 mi", lat + 0.0061, lng + 0.0007));
 	}
 
-	private FetchResult fetchNearby(double lat, double lng, int radiusMeters, String type, String apiKey, String pageToken) {
+	private FetchResult fetchNearby(double lat, double lng, int radiusMeters, String type, String apiKey) {
 		String endpoint = "https://places.googleapis.com/v1/places:searchNearby";
 
 		HttpHeaders headers = new HttpHeaders();
@@ -241,96 +235,6 @@ public class PlacesService {
 		return new FetchResult(out, nextPageToken);
 	}
 
-	private FetchResult fetchText(double lat, double lng, int radiusMeters, String keyword, String apiKey, String pageToken) {
-		String endpoint = "https://places.googleapis.com/v1/places:searchText";
-
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-		headers.set("X-Goog-Api-Key", apiKey);
-		headers.set("X-Goog-FieldMask",
-				"places.id,places.displayName,places.location,places.formattedAddress,places.rating");
-
-		Map<String, Object> body = new HashMap<>();
-		body.put("textQuery", keyword);
-		body.put("maxResultCount", 20);
-		// places.searchText does NOT allow locationRestriction.circle (only rectangle).
-		// Use locationBias.circle and apply a strict distance filter client-side.
-		body.put("locationBias", Map.of(
-				"circle", Map.of(
-						"center", Map.of("latitude", lat, "longitude", lng),
-						"radius", radiusMeters)));
-		if (pageToken != null && !pageToken.isBlank()) {
-			body.put("pageToken", pageToken);
-		}
-
-		ResponseEntity<Map<String, Object>> resp;
-		try {
-			resp = restTemplate.exchange(
-					endpoint,
-					Objects.requireNonNull(HttpMethod.POST),
-					new HttpEntity<>(body, headers),
-					new ParameterizedTypeReference<>() {
-					});
-		} catch (HttpStatusCodeException e) {
-			String details = e.getResponseBodyAsString() == null ? "" : e.getResponseBodyAsString().trim();
-			String suffix = details.isBlank() ? "" : " - " + details;
-			throw new ApiException(HttpStatus.BAD_GATEWAY, "Places failed" + suffix);
-		} catch (RestClientException e) {
-			throw new ApiException(HttpStatus.BAD_GATEWAY, "Places service unavailable");
-		}
-
-		Map<String, Object> respBody = resp.getBody();
-		if (respBody == null) {
-			return new FetchResult(List.of(), null);
-		}
-		String nextPageToken = (respBody.get("nextPageToken") instanceof String t) ? t : null;
-
-		Object placesObj = respBody.get("places");
-		if (!(placesObj instanceof List<?> placesList) || placesList.isEmpty()) {
-			return new FetchResult(List.of(), nextPageToken);
-		}
-
-		List<Candidate> out = new ArrayList<>();
-		for (Object placeObj : placesList) {
-			if (!(placeObj instanceof Map<?, ?> placeMap))
-				continue;
-
-			Object idObj = placeMap.get("id");
-			Object displayNameObj = placeMap.get("displayName");
-			Object locationObj = placeMap.get("location");
-			Object addrObj = placeMap.get("formattedAddress");
-			Object ratingObj = placeMap.get("rating");
-			if (!(idObj instanceof String placeId))
-				continue;
-			if (!(locationObj instanceof Map<?, ?> locMap))
-				continue;
-			Double pLat = toDouble(locMap.get("latitude"));
-			Double pLng = toDouble(locMap.get("longitude"));
-			if (pLat == null || pLng == null)
-				continue;
-
-			String name = null;
-			if (displayNameObj instanceof Map<?, ?> dnMap) {
-				Object textObj = dnMap.get("text");
-				if (textObj instanceof String t)
-					name = t;
-			}
-			if (name == null)
-				continue;
-
-			String address = (addrObj instanceof String s && !s.isBlank()) ? s : null;
-			Double rating = toDouble(ratingObj);
-
-			double dist = haversineMeters(lat, lng, pLat, pLng);
-			if (dist > radiusMeters) {
-				continue;
-			}
-			out.add(new Candidate(placeId, name, address, rating, pLat, pLng, dist));
-		}
-
-		return new FetchResult(out, nextPageToken);
-	}
-
 	private record FetchResult(List<Candidate> candidates, String nextPageToken) {
 	}
 
@@ -341,15 +245,6 @@ public class PlacesService {
 		double factor = 1.0 + (sign * jitter);
 		int radius = (int) Math.round(baseRadiusMeters * factor);
 		return Math.max(1, radius);
-	}
-
-	private static void sleepForPaginationToken() {
-		// Some Google Places pagination tokens may need a short delay before becoming valid.
-		try {
-			Thread.sleep(1100);
-		} catch (InterruptedException ignored) {
-			Thread.currentThread().interrupt();
-		}
 	}
 
 	private static int countHighQualityUnique(Iterable<Candidate> candidates, double minRating) {
@@ -403,21 +298,6 @@ public class PlacesService {
 		base = base.replaceAll("[^a-z0-9]+", " ");
 		base = base.replaceAll("\\s+", " ").trim();
 		return base;
-	}
-
-	private enum QueryKind {
-		NEARBY_TYPE,
-		TEXT_KEYWORD
-	}
-
-	private record QuerySpec(QueryKind kind, String value) {
-		static QuerySpec nearbyType(String type) {
-			return new QuerySpec(QueryKind.NEARBY_TYPE, type);
-		}
-
-		static QuerySpec textKeyword(String keyword) {
-			return new QuerySpec(QueryKind.TEXT_KEYWORD, keyword);
-		}
 	}
 
 	private static Double toDouble(Object v) {
