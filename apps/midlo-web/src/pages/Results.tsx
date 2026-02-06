@@ -247,8 +247,8 @@ export default function ResultsPage() {
       return;
     }
 
-    // IMPORTANT: share the server-rendered OG endpoint so Instagram/etc see proper meta tags.
-    const shareUrl = new URL("/api/share/midpoint", window.location.origin);
+    // IMPORTANT: share the public URL (server-rendered in production) so Instagram/etc see meta tags.
+    const shareUrl = new URL("/share/midpoint", window.location.origin);
     shareUrl.searchParams.set("a", locationA);
     shareUrl.searchParams.set("b", locationB);
     // We can omit pl here; the app will recompute places from a/b on open.

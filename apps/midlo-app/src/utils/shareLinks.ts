@@ -37,16 +37,8 @@ export function midpointShareUrl(locationA: string, locationB: string, places?: 
   const u = new URL("/share/midpoint", webBaseUrl());
   if (locationA) u.searchParams.set("a", locationA);
   if (locationB) u.searchParams.set("b", locationB);
-  if (places?.length) {
-    const snapshot = places.slice(0, 5).map((p) => ({
-      placeId: p.placeId,
-      name: p.name,
-      distance: p.distance,
-      lat: p.lat,
-      lng: p.lng,
-    }));
-    u.searchParams.set("pl", JSON.stringify(snapshot));
-  }
+  // IMPORTANT: do not embed a places snapshot in the URL.
+  // Some apps (notably Instagram) fail to send very long links.
   return u.toString();
 }
 

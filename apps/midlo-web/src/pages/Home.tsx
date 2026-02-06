@@ -291,11 +291,12 @@ export default function Home() {
   };
 
   const handleShare = async () => {
-    const shareUrl = new URL("/api/share/midpoint", window.location.origin);
+    // Use the public share URL (server-rendered in production) for link previews.
+    const shareUrl = new URL("/share/midpoint", window.location.origin);
     if (aText) shareUrl.searchParams.set("a", aText);
     if (bText) shareUrl.searchParams.set("b", bText);
-    if (places.length)
-      shareUrl.searchParams.set("pl", encodePlacesSnapshotParam(places));
+    // IMPORTANT: do not include list snapshots in the share URL.
+    // Some apps (e.g. Instagram) fail to send very long links.
 
     const urlString = shareUrl.toString();
 
