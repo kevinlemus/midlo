@@ -26,9 +26,7 @@ export default function ResultsPage() {
   const [isRescanning, setIsRescanning] = useState(false);
   const [rescanCount, setRescanCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<
-    string | null
-  >(null);
+  const [noMoreOptionsMessage, setNoMoreOptionsMessage] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
@@ -68,11 +66,7 @@ export default function ResultsPage() {
     return copy;
   };
 
-  const pickFiveUnique = (
-    candidates: Place[],
-    exclude: Place[],
-    seed: number,
-  ) => {
+  const pickFiveUnique = (candidates: Place[], exclude: Place[], seed: number) => {
     const excludeKeys = new Set(exclude.map(placeKey));
     const uniq: Place[] = [];
     const seen = new Set<string>();
@@ -91,18 +85,11 @@ export default function ResultsPage() {
     return uniq;
   };
 
-  const jitterLatLng = (
-    lat: number,
-    lng: number,
-    seed: number,
-    attempt: number,
-  ) => {
+  const jitterLatLng = (lat: number, lng: number, seed: number, attempt: number) => {
     const angle = ((seed + attempt * 997) % 360) * (Math.PI / 180);
     const radiusDeg = 0.0015 + attempt * 0.001;
     const latDelta = Math.cos(angle) * radiusDeg;
-    const lngDelta =
-      (Math.sin(angle) * radiusDeg) /
-      Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const lngDelta = (Math.sin(angle) * radiusDeg) / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
     return { lat: lat + latDelta, lng: lng + lngDelta };
   };
 
@@ -176,9 +163,7 @@ export default function ResultsPage() {
         }
       }, 120);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Something went wrong. Try again.",
-      );
+      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
       setIsLoading(false);
     }
@@ -204,7 +189,6 @@ export default function ResultsPage() {
             ? { lat: midpoint.lat, lng: midpoint.lng }
             : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
 
-        // eslint-disable-next-line no-await-in-loop
         const batch = await api.getPlaces(coords.lat, coords.lng);
         pool = pool.concat(batch);
 
@@ -233,9 +217,7 @@ export default function ResultsPage() {
 
       setNoMoreOptionsMessage("Try adjusting your locations for more options.");
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Couldn’t refresh options. Try again.",
-      );
+      setError(e instanceof Error ? e.message : "Couldn’t refresh options. Try again.");
     } finally {
       setIsRescanning(false);
     }
@@ -247,13 +229,24 @@ export default function ResultsPage() {
       return;
     }
 
-    // IMPORTANT: share the public URL (server-rendered in production) so Instagram/etc see meta tags.
+    // Share a short, public URL (production rewrites this to the OG HTML endpoint).
     const shareUrl = new URL("/share/midpoint", window.location.origin);
     shareUrl.searchParams.set("a", locationA);
     shareUrl.searchParams.set("b", locationB);
-    // We can omit pl here; the app will recompute places from a/b on open.
 
     const urlString = shareUrl.toString();
+
+    if ((navigator as any).share) {
+      try {
+        await (navigator as any).share({
+          title: "Meet in the middle with Midlo",
+          url: urlString,
+        });
+        return;
+      } catch {
+        // ignore share cancellation
+      }
+    }
 
     try {
       await navigator.clipboard.writeText(urlString);
@@ -468,112 +461,119 @@ export default function ResultsPage() {
               {/* HEADER */}
               <div
                 style={{
-                  fontSize: "var(--font-size-subheading)",
-                  color: "var(--color-primary-dark)",
-                  fontWeight: 500,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   marginBottom: "var(--space-xs)",
                 }}
               >
-                Nearby options
-              </div>
+                <div
+                  style={{
+                    fontSize: "var(--font-size-subheading)",
+                    color: "var(--color-primary-dark)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Nearby options
+                </div>
 
-              {/* NAVIGATION CLUSTER */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-end",
-                  gap: "var(--space-xxs)",
-                  marginBottom: "var(--space-sm)",
-                  minHeight: "40px",
-                }}
-              >
+                {/* NAVIGATION CLUSTER */}
                 <div
                   style={{
                     display: "flex",
-                    alignItems: "center",
-                    gap: "var(--space-xs)",
-                    justifyContent: "flex-end",
-                    flexWrap: "wrap",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    width: "100%",
+                    maxWidth: 260,
                   }}
                 >
-                  {/* PREVIOUS */}
-                  <button
-                    type="button"
-                    onClick={handlePrevBatch}
-                    disabled={!canGoPrev}
-                    className="midlo-button midlo-button-secondary"
+                  {/* BUTTON ROW — fixed height */}
+                  <div
                     style={{
-                      padding: "6px 12px",
-                      fontSize: "var(--font-size-caption)",
-                      borderRadius: "var(--radius-pill)",
-                      whiteSpace: "nowrap",
-                      opacity: canGoPrev ? 1 : 0.6,
+                      display: "flex",
+                      gap: "6px",
+                      justifyContent: "flex-end",
+                      height: 32,
                     }}
                   >
-                    Previous results
-                  </button>
+                    {/* PREVIOUS */}
+                    <button
+                      type="button"
+                      onClick={handlePrevBatch}
+                      disabled={!canGoPrev}
+                      className="midlo-button midlo-button-secondary"
+                      style={{
+                        padding: "4px 10px",
+                        fontSize: "var(--font-size-caption)",
+                        borderRadius: "var(--radius-pill)",
+                        opacity: canGoPrev ? 1 : 0.4,
+                        transition: "opacity 0.2s ease",
+                      }}
+                    >
+                      Prev
+                    </button>
 
-                  {/* NEXT */}
-                  {canGoNextStored && (
+                    {/* NEXT */}
                     <button
                       type="button"
                       onClick={handleNextBatch}
+                      disabled={!canGoNextStored}
                       className="midlo-button midlo-button-secondary"
                       style={{
-                        padding: "6px 12px",
+                        padding: "4px 10px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
-                        whiteSpace: "nowrap",
+                        opacity: canGoNextStored ? 1 : 0.4,
+                        transition: "opacity 0.2s ease",
                       }}
                     >
-                      Next results
+                      Next
                     </button>
-                  )}
 
-                  {/* RESCAN */}
-                  {isOnLastBatch && canRescanMore && (
+                    {/* RESCAN — stays visible, just disables */}
                     <button
                       type="button"
                       onClick={() => void handleSeeDifferentOptions()}
-                      disabled={isRescanning}
+                      disabled={!isOnLastBatch || !canRescanMore || isRescanning}
                       className="midlo-button midlo-button-secondary"
                       style={{
-                        padding: "6px 12px",
+                        padding: "4px 10px",
                         fontSize: "var(--font-size-caption)",
                         borderRadius: "var(--radius-pill)",
-                        whiteSpace: "nowrap",
-                        opacity: isRescanning ? 0.7 : 1,
+                        opacity:
+                          isOnLastBatch && canRescanMore && !isRescanning
+                            ? 1
+                            : 0.4,
+                        transition: "opacity 0.2s ease",
                       }}
                     >
-                      {isRescanning
-                        ? "Finding new options…"
-                        : "See different options"}
+                      {isRescanning ? "Refreshing…" : "New options"}
                     </button>
-                  )}
-                </div>
+                  </div>
 
-                {/* INLINE MESSAGE */}
-                <div
-                  style={{
-                    height: "20px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  {isOnLastBatch && !canRescanMore && (
+                  {/* MESSAGE ROW — fixed height, fades */}
+                  <div
+                    style={{
+                      height: 18,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                      overflow: "hidden",
+                    }}
+                  >
                     <span
                       style={{
                         fontSize: "var(--font-size-caption)",
                         color: "var(--color-muted)",
+                        opacity: isOnLastBatch && !canRescanMore ? 1 : 0,
+                        transition: "opacity 0.25s ease",
                         whiteSpace: "nowrap",
                       }}
                     >
                       {noMoreOptionsMessage ??
                         "Try adjusting your locations for more options."}
                     </span>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -583,6 +583,9 @@ export default function ResultsPage() {
                   display: "grid",
                   gap: "var(--space-sm)",
                   marginTop: "var(--space-sm)",
+                  opacity: isRescanning ? 0.6 : 1,
+                  transition: "opacity 0.25s ease",
+                  pointerEvents: isRescanning ? "none" : "auto",
                 }}
               >
                 {places.map((p) => (
@@ -605,6 +608,7 @@ export default function ResultsPage() {
                       backgroundColor: "var(--color-surface)",
                       cursor: p.placeId ? "pointer" : "default",
                       boxShadow: "var(--shadow-card)",
+                      transition: "background-color 0.2s ease",
                     }}
                   >
                     <div
