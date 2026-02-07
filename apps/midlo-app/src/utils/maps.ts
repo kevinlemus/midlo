@@ -65,7 +65,13 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   const address = typeof formattedAddress === "string" ? formattedAddress.trim() : "";
   // Never fall back to a raw "lat,lng" query for places. If we don't have an
   // address, prefer the place name (still shows a place label in Apple/Waze).
-  const query = joinNonEmpty([placeName || null, address || null]) || placeName || "Point of interest";
+  const query =
+    joinNonEmpty([placeName || null, address || null]) ||
+    placeName ||
+    "Point of interest";
+
+  // Encourage the UI to display the actual place name ("Walmart").
+  const labelQuery = placeName || query;
 
   // Google: prefer placeId so it resolves to the canonical listing.
   const google = placeId
@@ -75,15 +81,29 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   // Apple Maps:
-  // - Prefer daddr= when we have an address (shows a real destination)
-  // - Otherwise fall back to q= (search by place name)
-  const apple = address
-    ? `http://maps.apple.com/?daddr=${encodeURIComponent(address)}`
-    : `http://maps.apple.com/?q=${encodeURIComponent(query)}`;
+  // - Always set q=<place name> so it shows the POI name
+  // - If we have an address, also set daddr=<address> so navigation targets the
+  //   correct location
+  // - Add ll= as a disambiguation hint
+  const apple = (() => {
+    const u = new URL("http://maps.apple.com/");
+    u.searchParams.set("q", labelQuery);
+    if (address) u.searchParams.set("daddr", address);
+    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
+    return u.toString();
+  })();
 
-  // Waze: prefer q= search (address or place name). Avoid ll-only navigation,
-  // which often displays as raw coordinates.
-  const waze = `https://waze.com/ul?q=${encodeURIComponent(address || query)}&navigate=yes`;
+  // Waze:
+  // - Put the name first (then address) so it shows the place name, not just an
+  //   unlabeled coordinate pin
+  // - Include ll= so it navigates to the specific instance
+  const waze = (() => {
+    const u = new URL("https://waze.com/ul");
+    u.searchParams.set("q", query);
+    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
+    u.searchParams.set("navigate", "yes");
+    return u.toString();
+  })();
 
   // Keep lat/lng referenced so callers can pass them consistently; useful for
   // future enhancements without changing call sites.
