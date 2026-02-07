@@ -210,7 +210,15 @@ export default function ResultsScreen() {
     if (!midpoint) return;
 
     if (!isOnLastBatch) {
-      handleNextBatch();
+      // If a "next" batch exists but is empty for any reason, force a rescan
+      // instead of advancing to a blank page.
+      const maybeNext = batches[activeBatchIndex + 1];
+      if (Array.isArray(maybeNext) && maybeNext.length > 0) {
+        handleNextBatch();
+      } else if (canRescanMore) {
+        setNoMoreOptionsMessage(null);
+        await handleRescan();
+      }
       return;
     }
 
@@ -325,14 +333,24 @@ export default function ResultsScreen() {
       let chosen: typeof currentPlaces | null = null;
 
       let pool: typeof currentPlaces = [];
+      let hadAnySuccessfulFetch = false;
       for (let attempt = 0; attempt < 12; attempt++) {
         const coords =
           attempt === 0
             ? { lat: midpoint.lat, lng: midpoint.lng }
             : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
 
-        // eslint-disable-next-line no-await-in-loop
-        const batch = await api.getPlaces(coords.lat, coords.lng);
+        let batch: typeof currentPlaces = [];
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          batch = await api.getPlaces(coords.lat, coords.lng);
+          hadAnySuccessfulFetch = true;
+        } catch {
+          // Try the next jittered coordinate. We'll still guarantee a full batch
+          // even if all requests fail.
+          continue;
+        }
+
         pool = pool.concat(batch);
 
         const next = pickFiveUnique(pool, current, seed).filter(
@@ -357,16 +375,25 @@ export default function ResultsScreen() {
         if (avoidCurrent.length > 0) {
           chosen = fillToFive(avoidCurrent);
         } else {
-          const fallbackBase = distinctPool.length > 0 ? distinctPool : uniqByKey(current);
+          // If the API repeatedly fails, we may have no pool at all.
+          // Fall back to what we already have on-screen so the UI never stalls.
+          const fallbackBase =
+            distinctPool.length > 0
+              ? distinctPool
+              : uniqByKey(batches.flat().length > 0 ? batches.flat() : current);
           const randomized = shuffleWithSeed(fallbackBase, seed);
           chosen = fillToFive(randomized);
         }
       }
 
       if (chosen && chosen.length > 0) {
-        const nextIndex = batches.length;
-        setBatches((prev) => [...prev, fillToFive(chosen)]);
-        setActiveBatchIndex(nextIndex);
+        setBatches((prev) => {
+          const nextIndex = prev.length;
+          const nextBatch = fillToFive(chosen);
+          // Keep active index in sync with the actual append.
+          setActiveBatchIndex(nextIndex);
+          return [...prev, nextBatch];
+        });
         for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
 
         setRescanCount((c) => c + 1);
@@ -377,9 +404,15 @@ export default function ResultsScreen() {
           placesCount: 5,
           source: "results_rescan",
         });
+      } else if (!hadAnySuccessfulFetch) {
+        setNoMoreOptionsMessage(
+          "Couldn’t refresh right now. Check your connection and try again.",
+        );
       }
     } catch {
-      // ignore
+      setNoMoreOptionsMessage(
+        "Couldn’t refresh right now. Check your connection and try again.",
+      );
     } finally {
       setIsRescanning(false);
     }
