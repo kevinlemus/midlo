@@ -21,7 +21,7 @@ import { api, placePhotoUrl } from "../../services/api";
 import type { PlacePhoto } from "../../services/api";
 import MidloCard from "../../components/MidloCard";
 import MidloButton from "../../components/MidloButton";
-import { mapsLinksWithPlaceId } from "../../utils/maps";
+import { mapsLinksForPlace } from "../../utils/maps";
 import { placeShareUrl } from "../../utils/shareLinks";
 
 type PlaceRoute = RouteProp<RootStackParamList, "Place">;
@@ -490,9 +490,17 @@ export default function PlaceScreen() {
                     }}
                   >
                     {(() => {
-                      const links = mapsLinksWithPlaceId(lat, lng, placeId);
+                      const links = mapsLinksForPlace({
+                        name: details.name,
+                        formattedAddress: details.formattedAddress,
+                        lat,
+                        lng,
+                        placeId,
+                      });
+
+                      const googleUrl = details.googleMapsUri || links.google;
                       const defaultUrl =
-                        Platform.OS === "ios" ? links.apple : links.google;
+                        Platform.OS === "ios" ? links.apple : googleUrl;
 
                       return (
                         <>
@@ -510,7 +518,7 @@ export default function PlaceScreen() {
                                 placeId,
                                 provider: "google",
                               });
-                              Linking.openURL(links.google);
+                              Linking.openURL(googleUrl);
                             }}
                             style={{
                               paddingVertical: 6,

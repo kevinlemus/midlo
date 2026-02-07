@@ -39,3 +39,46 @@ export function mapsLinksWithPlaceId(lat: number, lng: number, placeId: string):
     waze: base.waze,
   };
 }
+
+export type PlaceMapsArgs = {
+  name?: string | null;
+  formattedAddress?: string | null;
+  lat: number;
+  lng: number;
+  placeId?: string | null;
+};
+
+function joinNonEmpty(parts: Array<string | null | undefined>): string {
+  return parts
+    .map((p) => (typeof p === "string" ? p.trim() : ""))
+    .filter(Boolean)
+    .join(", ");
+}
+
+/**
+ * Builds deep links that resolve to the actual place (name/address), not just a
+ * lat/lng pin.
+ */
+export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
+  const { name, formattedAddress, lat, lng, placeId } = args;
+  const query = joinNonEmpty([name ?? null, formattedAddress ?? null]) || `${f(lat)},${f(lng)}`;
+
+  // Google: prefer placeId so it resolves to the canonical listing.
+  const google = placeId
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}&query_place_id=${encodeURIComponent(
+        placeId,
+      )}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+
+  // Apple Maps: prefer q= (search string) so it shows the place/address.
+  const apple = `http://maps.apple.com/?q=${encodeURIComponent(query)}&ll=${encodeURIComponent(
+    `${f(lat)},${f(lng)}`,
+  )}`;
+
+  // Waze: use q= for search and include ll= as a hint.
+  const waze = `https://waze.com/ul?q=${encodeURIComponent(query)}&ll=${encodeURIComponent(
+    `${f(lat)},${f(lng)}`,
+  )}&navigate=yes`;
+
+  return { google, apple, waze };
+}

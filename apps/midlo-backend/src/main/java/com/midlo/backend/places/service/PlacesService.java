@@ -55,18 +55,17 @@ public class PlacesService {
 		double lng = request.lng();
 
 		// Goal: provide enough unique options for 6 batches × 5 places = 30.
+		// But critically: never return an empty list. If the midpoint is rural,
+		// progressively expand the search radius and broaden types.
 		final int targetUniquePlaces = 30;
-		// Keep latency bounded: build variety from multiple queries, but cap total
-		// calls.
-		final int maxQueries = 8;
+		final int minReturnPlaces = 5;
 		final double minRating = 2.5;
-		final int baseRadiusMeters = 8000; // keep midpoint fairness; only small jitter applied per query
 		final Random random = new Random();
 
 		// Keep this 100% on places:searchNearby (stable payload shape).
-		// places:searchText has been
-		// a frequent source of INVALID_ARGUMENT due to stricter request schema.
-		List<String> types = List.of(
+		// places:searchText has been a frequent source of INVALID_ARGUMENT due to
+		// stricter request schema.
+		final List<String> primaryTypes = List.of(
 				"restaurant",
 				"cafe",
 				"bar",
@@ -80,32 +79,111 @@ public class PlacesService {
 				"museum",
 				"shopping_mall");
 
-		List<String> queryPlan = new ArrayList<>(types);
-		Collections.shuffle(queryPlan, random);
+		// Fallback types for rural areas where the "fun" categories might not exist
+		// nearby.
+		final List<String> fallbackTypes = List.of(
+				"gas_station",
+				"supermarket",
+				"grocery_store",
+				"convenience_store",
+				"lodging",
+				"pharmacy");
+
+		// Expand radius until we have enough candidates.
+		// Note: Places API enforces an upper bound; keep within a safe ceiling.
+		final int maxRadiusMeters = 50_000;
+		final List<Integer> radiusPlanMeters = List.of(8_000, 15_000, 25_000, 40_000, maxRadiusMeters);
+
+		// Keep latency bounded: cap total calls across all radii.
+		final int maxTotalQueries = 16;
 
 		Map<String, Candidate> byPlaceId = new HashMap<>();
 		ApiException lastFailure = null;
 		int queriesRun = 0;
 
-		for (String type : queryPlan) {
-			if (queriesRun >= maxQueries) {
-				break;
+		outer: for (int radiusMeters : radiusPlanMeters) {
+			List<String> queryPlan = new ArrayList<>();
+			queryPlan.addAll(primaryTypes);
+			if (radiusMeters >= 25_000) {
+				queryPlan.addAll(fallbackTypes);
 			}
-			int jitteredRadius = jitterRadiusMeters(baseRadiusMeters, random);
-			FetchResult first;
-			try {
-				first = fetchNearby(lat, lng, jitteredRadius, type, apiKey);
-			} catch (ApiException e) {
-				lastFailure = e;
-				continue;
-			}
-			queriesRun++;
-			for (Candidate c : first.candidates) {
-				byPlaceId.putIfAbsent(c.placeId, c);
-			}
+			Collections.shuffle(queryPlan, random);
 
-			if (countHighQualityUnique(byPlaceId.values(), minRating) >= targetUniquePlaces) {
-				break;
+			for (String type : queryPlan) {
+				if (queriesRun >= maxTotalQueries) {
+					break outer;
+				}
+				int jitteredRadius = jitterWithinMax(radiusMeters, maxRadiusMeters, random);
+				FetchResult first;
+				try {
+					first = fetchNearby(lat, lng, jitteredRadius, type, apiKey);
+				} catch (ApiException e) {
+					lastFailure = e;
+					queriesRun++;
+					continue;
+				}
+				queriesRun++;
+				for (Candidate c : first.candidates) {
+					byPlaceId.putIfAbsent(c.placeId, c);
+				}
+
+				int highQuality = countHighQualityUnique(byPlaceId.values(), minRating);
+				int withCoords = countWithCoords(byPlaceId.values());
+				if (highQuality >= targetUniquePlaces) {
+					break outer;
+				}
+				if (withCoords >= minReturnPlaces && radiusMeters <= 15_000) {
+					// If we already have enough options very close to the midpoint, stop early
+					// to preserve fairness.
+					break outer;
+				}
+			}
+		}
+
+		// If we still have too few options, do a final broad pass using a few
+		// nearby centers to avoid the case where the midpoint lands in a sparse
+		// area between towns.
+		if (countWithCoords(byPlaceId.values()) < minReturnPlaces && queriesRun < maxTotalQueries) {
+			List<double[]> centers = buildFallbackCenters(lat, lng, 35_000);
+			List<String> finalTypes = new ArrayList<>();
+			finalTypes.addAll(fallbackTypes);
+			finalTypes.addAll(primaryTypes);
+			Collections.shuffle(finalTypes, random);
+
+			for (double[] center : centers) {
+				if (queriesRun >= maxTotalQueries) break;
+				double cLat = center[0];
+				double cLng = center[1];
+				for (String type : finalTypes) {
+					if (queriesRun >= maxTotalQueries) break;
+					FetchResult r;
+					try {
+						r = fetchNearby(cLat, cLng, maxRadiusMeters, type, apiKey);
+					} catch (ApiException e) {
+						lastFailure = e;
+						queriesRun++;
+						continue;
+					}
+					queriesRun++;
+					for (Candidate c : r.candidates) {
+						// Distance should still be from the true midpoint for fairness.
+						double dist = haversineMeters(lat, lng, c.lat, c.lng);
+						byPlaceId.putIfAbsent(c.placeId, new Candidate(
+								c.placeId,
+								c.name,
+								c.formattedAddress,
+								c.rating,
+								c.lat,
+								c.lng,
+								dist));
+					}
+					if (countWithCoords(byPlaceId.values()) >= minReturnPlaces) {
+						break;
+					}
+				}
+				if (countWithCoords(byPlaceId.values()) >= minReturnPlaces) {
+					break;
+				}
 			}
 		}
 
@@ -141,6 +219,45 @@ public class PlacesService {
 				.limit(targetUniquePlaces)
 				.map(c -> new PlaceResponse(c.placeId, c.name, formatDistanceMiles(c.distanceMeters), c.lat, c.lng))
 				.toList();
+	}
+
+	private static int countWithCoords(Iterable<Candidate> candidates) {
+		int count = 0;
+		for (Candidate c : candidates) {
+			if (c.lat == null || c.lng == null) continue;
+			count++;
+		}
+		return count;
+	}
+
+	private static int jitterWithinMax(int radiusMeters, int maxRadiusMeters, Random random) {
+		// Randomize slightly without ever exceeding the configured ceiling.
+		// (Some Places backends enforce strict radius max.)
+		double factor = 0.90 + (random.nextDouble() * 0.10); // 0.90..1.00
+		int radius = (int) Math.round(radiusMeters * factor);
+		radius = Math.max(1, radius);
+		return Math.min(radius, maxRadiusMeters);
+	}
+
+	private static List<double[]> buildFallbackCenters(double lat, double lng, int offsetMeters) {
+		// Approximate meters→degrees. Good enough for shifting a search window.
+		double latRad = Math.toRadians(lat);
+		double metersPerDegLat = 111_320.0;
+		double metersPerDegLng = Math.max(1.0, metersPerDegLat * Math.cos(latRad));
+		double dLat = offsetMeters / metersPerDegLat;
+		double dLng = offsetMeters / metersPerDegLng;
+
+		List<double[]> centers = new ArrayList<>();
+		centers.add(new double[] { lat, lng });
+		centers.add(new double[] { lat + dLat, lng });
+		centers.add(new double[] { lat - dLat, lng });
+		centers.add(new double[] { lat, lng + dLng });
+		centers.add(new double[] { lat, lng - dLng });
+		centers.add(new double[] { lat + dLat, lng + dLng });
+		centers.add(new double[] { lat + dLat, lng - dLng });
+		centers.add(new double[] { lat - dLat, lng + dLng });
+		centers.add(new double[] { lat - dLat, lng - dLng });
+		return centers;
 	}
 
 	private static List<PlaceResponse> mockPlaces(PlacesRequest request) {
@@ -242,7 +359,8 @@ public class PlacesService {
 	}
 
 	private static int jitterRadiusMeters(int baseRadiusMeters, Random random) {
-		// ±5–10% jitter (never expands beyond this).
+		// Legacy helper (kept for compatibility if referenced elsewhere):
+		// ±5–10% jitter.
 		double jitter = 0.05 + (random.nextDouble() * 0.05);
 		double sign = random.nextBoolean() ? 1.0 : -1.0;
 		double factor = 1.0 + (sign * jitter);
