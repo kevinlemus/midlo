@@ -61,9 +61,11 @@ function joinNonEmpty(parts: Array<string | null | undefined>): string {
  */
 export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   const { name, formattedAddress, lat, lng, placeId } = args;
-  const textQuery = joinNonEmpty([name ?? null, formattedAddress ?? null]);
-  const hasTextQuery = Boolean(textQuery);
-  const query = hasTextQuery ? textQuery : `${f(lat)},${f(lng)}`;
+  const placeName = typeof name === "string" ? name.trim() : "";
+  const address = typeof formattedAddress === "string" ? formattedAddress.trim() : "";
+  // Never fall back to a raw "lat,lng" query for places. If we don't have an
+  // address, prefer the place name (still shows a place label in Apple/Waze).
+  const query = joinNonEmpty([placeName || null, address || null]) || placeName || "Point of interest";
 
   // Google: prefer placeId so it resolves to the canonical listing.
   const google = placeId
@@ -72,20 +74,21 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
       )}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
-  // Apple Maps: if we have a real place string, don't force ll= (Apple can
-  // display a coordinate label even when q is present). Only include ll as a
-  // fallback.
-  const apple = hasTextQuery
-    ? `http://maps.apple.com/?q=${encodeURIComponent(query)}`
-    : `http://maps.apple.com/?ll=${encodeURIComponent(`${f(lat)},${f(lng)}`)}`;
+  // Apple Maps:
+  // - Prefer daddr= when we have an address (shows a real destination)
+  // - Otherwise fall back to q= (search by place name)
+  const apple = address
+    ? `http://maps.apple.com/?daddr=${encodeURIComponent(address)}`
+    : `http://maps.apple.com/?q=${encodeURIComponent(query)}`;
 
-  // Waze: same idea — prefer a query-only open when we have text; otherwise
-  // fall back to coordinates.
-  const waze = hasTextQuery
-    ? `https://waze.com/ul?q=${encodeURIComponent(query)}&navigate=yes`
-    : `https://waze.com/ul?ll=${encodeURIComponent(
-        `${f(lat)},${f(lng)}`,
-      )}&navigate=yes`;
+  // Waze: prefer q= search (address or place name). Avoid ll-only navigation,
+  // which often displays as raw coordinates.
+  const waze = `https://waze.com/ul?q=${encodeURIComponent(address || query)}&navigate=yes`;
+
+  // Keep lat/lng referenced so callers can pass them consistently; useful for
+  // future enhancements without changing call sites.
+  void lat;
+  void lng;
 
   return { google, apple, waze };
 }
