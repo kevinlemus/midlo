@@ -50,6 +50,37 @@ export default function ResultsScreen() {
     return p.placeId || `${p.name}__${p.distance}`;
   }
 
+  const uniqByKey = React.useCallback(
+    (items: PlaceT[]): PlaceT[] => {
+      const out: PlaceT[] = [];
+      const seen = new Set<string>();
+      for (const p of items) {
+        const k = placeKey(p);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(p);
+      }
+      return out;
+    },
+    [],
+  );
+
+  const fillToFive = React.useCallback(
+    (items: PlaceT[]): PlaceT[] => {
+      const base = items.filter(Boolean);
+      if (base.length === 0) return [];
+
+      const out: PlaceT[] = [...base];
+      let i = 0;
+      while (out.length < 5) {
+        out.push(base[i % base.length]);
+        i++;
+      }
+      return out.slice(0, 5);
+    },
+    [],
+  );
+
   const makeResultsKey = React.useCallback(() => {
     const a = (locationA ?? "").trim();
     const b = (locationB ?? "").trim();
@@ -70,11 +101,11 @@ export default function ResultsScreen() {
 
   const [batches, setBatches] = React.useState<PlaceT[][]>(() => {
     if (hasSavedState) {
-      return (resultsState!.batches as PlaceT[][]).filter((b) =>
-        Array.isArray(b),
-      );
+      return (resultsState!.batches as PlaceT[][])
+        .filter((b) => Array.isArray(b))
+        .map((b) => fillToFive(b));
     }
-    return [places.slice(0, 5)];
+    return [fillToFive(places.slice(0, 5))];
   });
   const [activeBatchIndex, setActiveBatchIndex] = React.useState(() => {
     if (hasSavedState) {
@@ -100,7 +131,7 @@ export default function ResultsScreen() {
     new Set(
       (hasSavedState
         ? (resultsState!.batches as PlaceT[][]).flat().map(placeKey)
-        : places.slice(0, 5).map(placeKey)) as string[],
+        : fillToFive(places.slice(0, 5)).map(placeKey)) as string[],
     ),
   );
 
@@ -115,14 +146,14 @@ export default function ResultsScreen() {
     }
 
     // New search → reset in-memory state.
-    const first = places.slice(0, 5);
+    const first = fillToFive(places.slice(0, 5));
     setBatches([first]);
     setActiveBatchIndex(0);
     seenPlaceKeysRef.current = new Set(first.map(placeKey));
     setRescanCount(0);
     setNoMoreOptionsMessage(null);
     prevResultsKeyRef.current = currentResultsKey;
-  }, [currentResultsKey, places]);
+  }, [currentResultsKey, places, fillToFive]);
 
   // Persist batches + active index into route params so back-navigation restores correctly
   // even if the screen is temporarily unmounted.
@@ -294,7 +325,7 @@ export default function ResultsScreen() {
       let chosen: typeof currentPlaces | null = null;
 
       let pool: typeof currentPlaces = [];
-      for (let attempt = 0; attempt < 8; attempt++) {
+      for (let attempt = 0; attempt < 12; attempt++) {
         const coords =
           attempt === 0
             ? { lat: midpoint.lat, lng: midpoint.lng }
@@ -314,9 +345,27 @@ export default function ResultsScreen() {
         }
       }
 
-      if (chosen) {
+      // If we couldn't find 5 brand-new unique places (common in rural areas),
+      // we still must return a full batch. Relax uniqueness constraints in a
+      // controlled order:
+      // 1) Avoid repeating the current batch
+      // 2) Allow repeats from earlier batches
+      // 3) As a last resort, repeat items to fill to 5
+      if (!chosen) {
+        const distinctPool = uniqByKey(pool);
+        const avoidCurrent = pickFiveUnique(distinctPool, current, seed);
+        if (avoidCurrent.length > 0) {
+          chosen = fillToFive(avoidCurrent);
+        } else {
+          const fallbackBase = distinctPool.length > 0 ? distinctPool : uniqByKey(current);
+          const randomized = shuffleWithSeed(fallbackBase, seed);
+          chosen = fillToFive(randomized);
+        }
+      }
+
+      if (chosen && chosen.length > 0) {
         const nextIndex = batches.length;
-        setBatches((prev) => [...prev, chosen]);
+        setBatches((prev) => [...prev, fillToFive(chosen)]);
         setActiveBatchIndex(nextIndex);
         for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
 
@@ -328,10 +377,6 @@ export default function ResultsScreen() {
           placesCount: 5,
           source: "results_rescan",
         });
-      } else {
-        setNoMoreOptionsMessage(
-          "Try adjusting your locations for more options.",
-        );
       }
     } catch {
       // ignore

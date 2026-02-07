@@ -58,7 +58,6 @@ public class PlacesService {
 		// But critically: never return an empty list. If the midpoint is rural,
 		// progressively expand the search radius and broaden types.
 		final int targetUniquePlaces = 30;
-		final int minReturnPlaces = 5;
 		final double minRating = 2.5;
 		final Random random = new Random();
 
@@ -95,7 +94,8 @@ public class PlacesService {
 		final List<Integer> radiusPlanMeters = List.of(8_000, 15_000, 25_000, 40_000, maxRadiusMeters);
 
 		// Keep latency bounded: cap total calls across all radii.
-		final int maxTotalQueries = 16;
+		// (Higher than before so rescans can still have 5 fresh options.)
+		final int maxTotalQueries = 40;
 
 		Map<String, Candidate> byPlaceId = new HashMap<>();
 		ApiException lastFailure = null;
@@ -129,12 +129,7 @@ public class PlacesService {
 
 				int highQuality = countHighQualityUnique(byPlaceId.values(), minRating);
 				int withCoords = countWithCoords(byPlaceId.values());
-				if (highQuality >= targetUniquePlaces) {
-					break outer;
-				}
-				if (withCoords >= minReturnPlaces && radiusMeters <= 15_000) {
-					// If we already have enough options very close to the midpoint, stop early
-					// to preserve fairness.
+				if (highQuality >= targetUniquePlaces || withCoords >= targetUniquePlaces) {
 					break outer;
 				}
 			}
@@ -143,8 +138,15 @@ public class PlacesService {
 		// If we still have too few options, do a final broad pass using a few
 		// nearby centers to avoid the case where the midpoint lands in a sparse
 		// area between towns.
-		if (countWithCoords(byPlaceId.values()) < minReturnPlaces && queriesRun < maxTotalQueries) {
-			List<double[]> centers = buildFallbackCenters(lat, lng, 35_000);
+		if (countWithCoords(byPlaceId.values()) < targetUniquePlaces && queriesRun < maxTotalQueries) {
+			List<double[]> centers = new ArrayList<>();
+			centers.addAll(buildFallbackCenters(lat, lng, 35_000));
+			centers.addAll(buildFallbackCenters(lat, lng, 80_000));
+			centers.addAll(buildFallbackCenters(lat, lng, 150_000));
+			centers.addAll(buildFallbackCenters(lat, lng, 250_000));
+			// Deduplicate identical centers (can happen near poles / extreme latitudes)
+			centers = centers.stream().distinct().toList();
+
 			List<String> finalTypes = new ArrayList<>();
 			finalTypes.addAll(fallbackTypes);
 			finalTypes.addAll(primaryTypes);
@@ -177,11 +179,11 @@ public class PlacesService {
 								c.lng,
 								dist));
 					}
-					if (countWithCoords(byPlaceId.values()) >= minReturnPlaces) {
+					if (countWithCoords(byPlaceId.values()) >= targetUniquePlaces) {
 						break;
 					}
 				}
-				if (countWithCoords(byPlaceId.values()) >= minReturnPlaces) {
+				if (countWithCoords(byPlaceId.values()) >= targetUniquePlaces) {
 					break;
 				}
 			}
@@ -358,15 +360,6 @@ public class PlacesService {
 	private record FetchResult(List<Candidate> candidates, String nextPageToken) {
 	}
 
-	private static int jitterRadiusMeters(int baseRadiusMeters, Random random) {
-		// Legacy helper (kept for compatibility if referenced elsewhere):
-		// ±5–10% jitter.
-		double jitter = 0.05 + (random.nextDouble() * 0.05);
-		double sign = random.nextBoolean() ? 1.0 : -1.0;
-		double factor = 1.0 + (sign * jitter);
-		int radius = (int) Math.round(baseRadiusMeters * factor);
-		return Math.max(1, radius);
-	}
 
 	private static int countHighQualityUnique(Iterable<Candidate> candidates, double minRating) {
 		int count = 0;
