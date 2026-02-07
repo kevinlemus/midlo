@@ -61,7 +61,9 @@ function joinNonEmpty(parts: Array<string | null | undefined>): string {
  */
 export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   const { name, formattedAddress, lat, lng, placeId } = args;
-  const query = joinNonEmpty([name ?? null, formattedAddress ?? null]) || `${f(lat)},${f(lng)}`;
+  const textQuery = joinNonEmpty([name ?? null, formattedAddress ?? null]);
+  const hasTextQuery = Boolean(textQuery);
+  const query = hasTextQuery ? textQuery : `${f(lat)},${f(lng)}`;
 
   // Google: prefer placeId so it resolves to the canonical listing.
   const google = placeId
@@ -70,15 +72,20 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
       )}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
-  // Apple Maps: prefer q= (search string) so it shows the place/address.
-  const apple = `http://maps.apple.com/?q=${encodeURIComponent(query)}&ll=${encodeURIComponent(
-    `${f(lat)},${f(lng)}`,
-  )}`;
+  // Apple Maps: if we have a real place string, don't force ll= (Apple can
+  // display a coordinate label even when q is present). Only include ll as a
+  // fallback.
+  const apple = hasTextQuery
+    ? `http://maps.apple.com/?q=${encodeURIComponent(query)}`
+    : `http://maps.apple.com/?ll=${encodeURIComponent(`${f(lat)},${f(lng)}`)}`;
 
-  // Waze: use q= for search and include ll= as a hint.
-  const waze = `https://waze.com/ul?q=${encodeURIComponent(query)}&ll=${encodeURIComponent(
-    `${f(lat)},${f(lng)}`,
-  )}&navigate=yes`;
+  // Waze: same idea — prefer a query-only open when we have text; otherwise
+  // fall back to coordinates.
+  const waze = hasTextQuery
+    ? `https://waze.com/ul?q=${encodeURIComponent(query)}&navigate=yes`
+    : `https://waze.com/ul?ll=${encodeURIComponent(
+        `${f(lat)},${f(lng)}`,
+      )}&navigate=yes`;
 
   return { google, apple, waze };
 }
