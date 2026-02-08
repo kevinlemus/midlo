@@ -82,25 +82,30 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   // Apple Maps:
-  // Prefer directions-style links so Maps resolves a named destination (instead
-  // of a dropped pin that can get relabeled to the street address).
+  // Prefer pin label with explicit address:
+  // Apple docs: q can be used as a label if the location is explicitly defined
+  // in ll OR address. Using address tends to avoid transient coordinate pins.
   const apple = (() => {
     const u = new URL("https://maps.apple.com/");
-    const destination = placeName && address ? `${placeName}, ${address}` : placeName || address || `${f(lat)},${f(lng)}`;
-    u.searchParams.set("daddr", destination);
-    u.searchParams.set("dirflg", "d");
+    if (placeName && address) {
+      u.searchParams.set("q", placeName);
+      u.searchParams.set("address", address);
+      return u.toString();
+    }
+
+    u.searchParams.set("q", labelQuery);
+    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
+    u.searchParams.set("z", "18");
     return u.toString();
   })();
 
   // Waze:
-  // Use q=<place name> and ll=<lat,lng> together so Waze can resolve the POI near
-  // that location, which tends to keep the UI labeled by place name.
+  // Prefer search-style link (q) over ll-navigation to avoid coordinate-only UIs.
   const waze = (() => {
     const u = new URL("https://waze.com/ul");
     const wazeQuery = placeName && address ? `${placeName}, ${address}` : placeName || labelQuery;
     u.searchParams.set("q", wazeQuery);
     u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
-    u.searchParams.set("navigate", "yes");
     return u.toString();
   })();
 

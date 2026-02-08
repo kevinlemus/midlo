@@ -49,32 +49,38 @@ export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArg
 
     const namePlusAddress = placeName && formattedAddress ? `${placeName}, ${formattedAddress}` : "";
 
-    // Prefer DIRECTIONS links over dropped-pin links.
-    // In practice, Apple Maps will often replace a dropped-pin label with the
-    // reverse-geocoded street address after a moment. Using daddr tends to behave
-    // more like "Get Directions" to a named POI.
-    const destination = namePlusAddress || placeName || formattedAddress || ll;
-    if (Platform.OS === "ios") {
-      urls.push(`maps://?daddr=${encode(destination)}&dirflg=d`);
-    }
-    urls.push(`https://maps.apple.com/?daddr=${encode(destination)}&dirflg=d`);
-
-    // Fallback: try a name-biased POI search near the coordinate.
-    // (Useful when a provider doesn't resolve the destination string well.)
-    if (placeName) {
+    // Best-effort to keep the *pin label* as the place name:
+    // Apple docs: q can be used as a label if the location is explicitly defined
+    // in ll OR address. In practice, defining an explicit address tends to avoid
+    // the brief coordinate pin that later re-labels to the street address.
+    if (placeName && formattedAddress) {
       if (Platform.OS === "ios") {
-        urls.push(`maps://?q=${encode(placeName)}&sll=${encode(ll)}`);
+        urls.push(`maps://?q=${encode(placeName)}&address=${encode(formattedAddress)}`);
       }
-      urls.push(`https://maps.apple.com/?q=${encode(placeName)}&sll=${encode(ll)}`);
+      urls.push(`https://maps.apple.com/?q=${encode(placeName)}&address=${encode(formattedAddress)}`);
     }
 
-    // Last-resort: label at coordinate.
+    // Next: label at coordinate.
     if (placeName) {
       if (Platform.OS === "ios") {
         urls.push(`maps://?q=${encode(placeName)}&ll=${encode(ll)}&z=18`);
       }
       urls.push(`https://maps.apple.com/?q=${encode(placeName)}&ll=${encode(ll)}&z=18`);
     }
+
+    // Next: search near the coordinate (user-typed search behavior).
+    const searchQuery = namePlusAddress || placeName || formattedAddress || ll;
+    if (Platform.OS === "ios") {
+      urls.push(`maps://?q=${encode(searchQuery)}&near=${encode(ll)}`);
+    }
+    urls.push(`https://maps.apple.com/?q=${encode(searchQuery)}&near=${encode(ll)}`);
+
+    // Last-resort: directions to the destination string.
+    const destination = searchQuery;
+    if (Platform.OS === "ios") {
+      urls.push(`maps://?daddr=${encode(destination)}&dirflg=d`);
+    }
+    urls.push(`https://maps.apple.com/?daddr=${encode(destination)}&dirflg=d`);
 
     return openFirstWorkingUrl(urls);
   }
@@ -85,21 +91,21 @@ export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArg
     const wazeQuery =
       placeName && formattedAddress ? `${placeName}, ${formattedAddress}` : placeName || formattedAddress || ll;
 
-    // Prefer name-first navigation so Waze resolves the POI and labels it by name.
+    // Waze cannot be forced to show a custom label for ll-based navigation.
+    // To avoid coordinate/address-only destinations, open a POI SEARCH view first.
+    // User can then tap the named result and start navigation.
     if (placeName) {
-      urls.push(`waze://?q=${encode(placeName)}&navigate=yes`);
-      urls.push(`https://waze.com/ul?q=${encode(placeName)}&navigate=yes`);
+      urls.push(`waze://?q=${encode(placeName)}`);
+      urls.push(`https://waze.com/ul?q=${encode(placeName)}`);
     }
+    urls.push(`waze://?q=${encode(wazeQuery)}`);
+    urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}`);
 
-    // If needed, disambiguate with address (helps chains / multi-tenant addresses).
-    urls.push(`waze://?q=${encode(wazeQuery)}&navigate=yes`);
-    urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}&navigate=yes`);
+    // Bias search near the coordinate (still search, not navigate).
+    urls.push(`waze://?q=${encode(wazeQuery)}&ll=${encode(ll)}`);
+    urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}&ll=${encode(ll)}`);
 
-    // If Waze can't resolve by query, bias the search to the known coordinate.
-    urls.push(`waze://?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
-    urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
-
-    // Last-resort coordinate navigation.
+    // Last-resort: coordinate navigation (may show coordinates/address).
     urls.push(`https://waze.com/ul?ll=${encode(ll)}&navigate=yes`);
     return openFirstWorkingUrl(urls);
   }
