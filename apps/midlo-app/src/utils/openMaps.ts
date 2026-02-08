@@ -47,29 +47,40 @@ export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArg
   if (provider === "apple") {
     const urls: string[] = [];
 
-    const query = placeName || formattedAddress || ll;
-    // Use search + near hint to resolve a POI by name (vs. labeling a pin).
-    // Apple docs: q is treated like user-typed search; near biases results.
-    if (Platform.OS === "ios") {
-      urls.push(`maps://?q=${encode(query)}&near=${encode(ll)}`);
+    const namePlusAddress = placeName && formattedAddress ? `${placeName}, ${formattedAddress}` : "";
+
+    // 1) Prefer "label at coordinate" mode.
+    // Apple docs: q can be used as a label if location is explicitly defined in ll.
+    // This tends to avoid the "X places at this address" card.
+    if (placeName) {
+      if (Platform.OS === "ios") {
+        urls.push(`maps://?q=${encode(placeName)}&ll=${encode(ll)}&z=18`);
+      }
+      urls.push(`https://maps.apple.com/?q=${encode(placeName)}&ll=${encode(ll)}&z=18`);
     }
-    urls.push(`https://maps.apple.com/?q=${encode(query)}&near=${encode(ll)}`);
+
+    // 2) If Apple still resolves to an address, fall back to a POI search near ll
+    // with a tighter query (name + address).
+    const searchQuery = namePlusAddress || placeName || formattedAddress || ll;
+    if (Platform.OS === "ios") {
+      urls.push(`maps://?q=${encode(searchQuery)}&near=${encode(ll)}`);
+    }
+    urls.push(`https://maps.apple.com/?q=${encode(searchQuery)}&near=${encode(ll)}`);
+
     return openFirstWorkingUrl(urls);
   }
 
   if (provider === "waze") {
     const urls: string[] = [];
-    const query = placeName || formattedAddress || ll;
-    // Waze deep links support combining q (search terms) and ll (search center).
-    // This helps resolve a specific POI near the known coordinate and keeps the
-    // UI labeled by place name rather than a street address.
-    if (placeName) {
-      urls.push(`waze://?q=${encode(placeName)}&ll=${encode(ll)}&navigate=yes`);
-      urls.push(`https://waze.com/ul?q=${encode(placeName)}&ll=${encode(ll)}&navigate=yes`);
-    } else {
-      urls.push(`waze://?q=${encode(query)}&navigate=yes`);
-      urls.push(`https://waze.com/ul?q=${encode(query)}&navigate=yes`);
-    }
+
+    const wazeQuery =
+      placeName && formattedAddress ? `${placeName}, ${formattedAddress}` : placeName || formattedAddress || ll;
+
+    // Waze supports combining q (search terms) and ll (search center).
+    // Including address in q helps disambiguate chains (e.g., multiple 7‑Eleven).
+    urls.push(`waze://?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
+    urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
+
     // Last-resort coordinate navigation.
     urls.push(`https://waze.com/ul?ll=${encode(ll)}&navigate=yes`);
     return openFirstWorkingUrl(urls);

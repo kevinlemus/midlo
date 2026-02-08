@@ -82,16 +82,13 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   // Apple Maps:
-  // Prefer POI search behavior so the result is labeled by place name (like when
-  // a user types the name into Apple Maps), instead of opening a raw pin that can
-  // be labeled with the reverse-geocoded street address.
+  // Prefer "label at coordinate" mode (q + ll), which Apple documents as the way
+  // to use q as a label when the location is explicitly defined.
   const apple = (() => {
     const u = new URL("https://maps.apple.com/");
-    // If we have a name, keep the query name-forward.
-    const appleQuery = placeName || query;
-    u.searchParams.set("q", appleQuery);
-    // Bias search toward the known coordinate.
-    u.searchParams.set("near", `${f(lat)},${f(lng)}`);
+    u.searchParams.set("q", labelQuery);
+    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
+    u.searchParams.set("z", "18");
     return u.toString();
   })();
 
@@ -100,7 +97,8 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   // that location, which tends to keep the UI labeled by place name.
   const waze = (() => {
     const u = new URL("https://waze.com/ul");
-    u.searchParams.set("q", placeName || labelQuery);
+    const wazeQuery = placeName && address ? `${placeName}, ${address}` : placeName || labelQuery;
+    u.searchParams.set("q", wazeQuery);
     u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
     u.searchParams.set("navigate", "yes");
     return u.toString();
