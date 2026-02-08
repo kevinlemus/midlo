@@ -22,6 +22,7 @@ import type { PlacePhoto } from "../../services/api";
 import MidloCard from "../../components/MidloCard";
 import MidloButton from "../../components/MidloButton";
 import { mapsLinksForPlace } from "../../utils/maps";
+import { openPlaceInMaps } from "../../utils/openMaps";
 import { placeShareUrl } from "../../utils/shareLinks";
 
 type PlaceRoute = RouteProp<RootStackParamList, "Place">;
@@ -149,6 +150,17 @@ export default function PlaceScreen() {
               <Pressable
                 onPress={() => {
                   track("place_opened", { placeId });
+                  if (Platform.OS === "ios" && hasLatLng && placeId) {
+                    openPlaceInMaps("apple", {
+                      name: details.name,
+                      formattedAddress: details.formattedAddress,
+                      lat,
+                      lng,
+                      placeId,
+                    });
+                    return;
+                  }
+
                   Linking.openURL(details.googleMapsUri!);
                 }}
                 style={{
@@ -544,7 +556,13 @@ export default function PlaceScreen() {
                                 placeId,
                                 provider: "apple",
                               });
-                              Linking.openURL(links.apple);
+                              openPlaceInMaps("apple", {
+                                name: details.name,
+                                formattedAddress: details.formattedAddress,
+                                lat,
+                                lng,
+                                placeId,
+                              });
                             }}
                             style={{
                               paddingVertical: 6,
@@ -570,7 +588,13 @@ export default function PlaceScreen() {
                                 placeId,
                                 provider: "waze",
                               });
-                              Linking.openURL(links.waze);
+                              openPlaceInMaps("waze", {
+                                name: details.name,
+                                formattedAddress: details.formattedAddress,
+                                lat,
+                                lng,
+                                placeId,
+                              });
                             }}
                             style={{
                               paddingVertical: 6,

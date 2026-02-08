@@ -20,6 +20,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -64,29 +65,37 @@ public class PlacesService {
 		// Keep this 100% on places:searchNearby (stable payload shape).
 		// places:searchText has been a frequent source of INVALID_ARGUMENT due to
 		// stricter request schema.
-		final List<String> primaryTypes = List.of(
-				"restaurant",
-				"cafe",
-				"bar",
-				"bakery",
-				"meal_takeaway",
-				"meal_delivery",
-				"park",
-				"tourist_attraction",
-				"movie_theater",
-				"bowling_alley",
-				"museum",
-				"shopping_mall");
+		// Query in balanced groups so we don't accidentally fill up on just
+		// restaurants and miss nearby bars/bowling/etc.
+		final List<List<String>> primaryTypeGroups = List.of(
+				List.of(
+						"restaurant",
+						"cafe",
+						"bakery",
+						"meal_takeaway",
+						"meal_delivery"),
+				List.of(
+						"bar",
+						"night_club",
+						"bowling_alley",
+						"movie_theater"),
+				List.of(
+						"park",
+						"tourist_attraction",
+						"museum",
+						"shopping_mall"));
 
 		// Fallback types for rural areas where the "fun" categories might not exist
 		// nearby.
-		final List<String> fallbackTypes = List.of(
-				"gas_station",
-				"supermarket",
-				"grocery_store",
-				"convenience_store",
-				"lodging",
-				"pharmacy");
+		final List<List<String>> fallbackTypeGroups = List.of(
+				List.of(
+						"gas_station",
+						"convenience_store",
+						"supermarket",
+						"grocery_store"),
+				List.of(
+						"lodging",
+						"pharmacy"));
 
 		// Expand radius until we have enough candidates.
 		// Note: Places API enforces an upper bound; keep within a safe ceiling.
@@ -102,21 +111,19 @@ public class PlacesService {
 		int queriesRun = 0;
 
 		outer: for (int radiusMeters : radiusPlanMeters) {
-			List<String> queryPlan = new ArrayList<>();
-			queryPlan.addAll(primaryTypes);
+			List<List<String>> queryPlan = new ArrayList<>();
+			queryPlan.addAll(primaryTypeGroups);
 			if (radiusMeters >= 25_000) {
-				queryPlan.addAll(fallbackTypes);
+				queryPlan.addAll(fallbackTypeGroups);
 			}
-			Collections.shuffle(queryPlan, random);
-
-			for (String type : queryPlan) {
+			for (List<String> types : queryPlan) {
 				if (queriesRun >= maxTotalQueries) {
 					break outer;
 				}
 				int jitteredRadius = jitterWithinMax(radiusMeters, maxRadiusMeters, random);
 				FetchResult first;
 				try {
-					first = fetchNearby(lat, lng, jitteredRadius, type, apiKey);
+					first = fetchNearby(lat, lng, jitteredRadius, types, apiKey);
 				} catch (ApiException e) {
 					lastFailure = e;
 					queriesRun++;
@@ -147,20 +154,19 @@ public class PlacesService {
 			// Deduplicate identical centers (can happen near poles / extreme latitudes)
 			centers = centers.stream().distinct().toList();
 
-			List<String> finalTypes = new ArrayList<>();
-			finalTypes.addAll(fallbackTypes);
-			finalTypes.addAll(primaryTypes);
-			Collections.shuffle(finalTypes, random);
+			List<List<String>> finalGroups = new ArrayList<>();
+			finalGroups.addAll(fallbackTypeGroups);
+			finalGroups.addAll(primaryTypeGroups);
 
 			for (double[] center : centers) {
 				if (queriesRun >= maxTotalQueries) break;
 				double cLat = center[0];
 				double cLng = center[1];
-				for (String type : finalTypes) {
+				for (List<String> types : finalGroups) {
 					if (queriesRun >= maxTotalQueries) break;
 					FetchResult r;
 					try {
-						r = fetchNearby(cLat, cLng, maxRadiusMeters, type, apiKey);
+						r = fetchNearby(cLat, cLng, maxRadiusMeters, types, apiKey);
 					} catch (ApiException e) {
 						lastFailure = e;
 						queriesRun++;
@@ -215,7 +221,8 @@ public class PlacesService {
 		}
 
 		List<Candidate> finalList = new ArrayList<>(dedupedByNameAddress);
-		Collections.shuffle(finalList, random);
+		// Closest-first (critical for product correctness).
+		finalList.sort(Comparator.comparingDouble(c -> c.distanceMeters));
 
 		return finalList.stream()
 				.limit(targetUniquePlaces)
@@ -274,7 +281,7 @@ public class PlacesService {
 				new PlaceResponse("mock_place_5", "Mock Coffee", "2.0 mi", lat + 0.0061, lng + 0.0007));
 	}
 
-	private FetchResult fetchNearby(double lat, double lng, int radiusMeters, String type, String apiKey) {
+	private FetchResult fetchNearby(double lat, double lng, int radiusMeters, List<String> types, String apiKey) {
 		String endpoint = "https://places.googleapis.com/v1/places:searchNearby";
 
 		HttpHeaders headers = new HttpHeaders();
@@ -284,7 +291,7 @@ public class PlacesService {
 				"places.id,places.displayName,places.location,places.formattedAddress,places.rating");
 
 		Map<String, Object> body = new HashMap<>();
-		body.put("includedTypes", List.of(type));
+		body.put("includedTypes", types);
 		body.put("maxResultCount", 20);
 		body.put("locationRestriction", Map.of(
 				"circle", Map.of(
