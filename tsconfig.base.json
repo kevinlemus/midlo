@@ -14,7 +14,8 @@
     "paths": {
       "@midlo/utils": ["packages/utils/src/index.ts"],
       "@midlo/shared-theme": ["packages/shared-theme/src/index.ts"],
-      "@midlo/shared-types": ["packages/shared-types/src/index.ts"]
+      "@midlo/shared-types": ["packages/shared-types/src/index.ts"],
+      "midlo-apple-maps": ["packages/midlo-apple-maps/src/index.ts"]
     }
   }
 }

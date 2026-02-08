@@ -8,7 +8,8 @@
       "theme": ["src/theme/index.ts"],
       "theme/*": ["src/theme/*"],
       "navigation": ["src/navigation/index.ts"],
-      "navigation/*": ["src/navigation/*"]
+      "navigation/*": ["src/navigation/*"],
+      "midlo-apple-maps": ["../../packages/midlo-apple-maps/src/index.ts"]
     }
   },
   "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"]

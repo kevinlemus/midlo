@@ -27,6 +27,10 @@ web-build/
 .expo/
 .expo-shared/
 
+# Allow checked-in native modules under packages/
+!packages/midlo-apple-maps/ios/
+!packages/midlo-apple-maps/ios/**
+
 # -------------------------
 # Logs
 # -------------------------
