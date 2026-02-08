@@ -82,13 +82,13 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   // Apple Maps:
-  // Prefer "label at coordinate" mode (q + ll), which Apple documents as the way
-  // to use q as a label when the location is explicitly defined.
+  // Prefer directions-style links so Maps resolves a named destination (instead
+  // of a dropped pin that can get relabeled to the street address).
   const apple = (() => {
     const u = new URL("https://maps.apple.com/");
-    u.searchParams.set("q", labelQuery);
-    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
-    u.searchParams.set("z", "18");
+    const destination = placeName && address ? `${placeName}, ${address}` : placeName || address || `${f(lat)},${f(lng)}`;
+    u.searchParams.set("daddr", destination);
+    u.searchParams.set("dirflg", "d");
     return u.toString();
   })();
 

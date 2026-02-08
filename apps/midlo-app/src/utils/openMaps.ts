@@ -49,23 +49,32 @@ export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArg
 
     const namePlusAddress = placeName && formattedAddress ? `${placeName}, ${formattedAddress}` : "";
 
-    // 1) Prefer "label at coordinate" mode.
-    // Apple docs: q can be used as a label if location is explicitly defined in ll.
-    // This tends to avoid the "X places at this address" card.
+    // Prefer DIRECTIONS links over dropped-pin links.
+    // In practice, Apple Maps will often replace a dropped-pin label with the
+    // reverse-geocoded street address after a moment. Using daddr tends to behave
+    // more like "Get Directions" to a named POI.
+    const destination = namePlusAddress || placeName || formattedAddress || ll;
+    if (Platform.OS === "ios") {
+      urls.push(`maps://?daddr=${encode(destination)}&dirflg=d`);
+    }
+    urls.push(`https://maps.apple.com/?daddr=${encode(destination)}&dirflg=d`);
+
+    // Fallback: try a name-biased POI search near the coordinate.
+    // (Useful when a provider doesn't resolve the destination string well.)
+    if (placeName) {
+      if (Platform.OS === "ios") {
+        urls.push(`maps://?q=${encode(placeName)}&sll=${encode(ll)}`);
+      }
+      urls.push(`https://maps.apple.com/?q=${encode(placeName)}&sll=${encode(ll)}`);
+    }
+
+    // Last-resort: label at coordinate.
     if (placeName) {
       if (Platform.OS === "ios") {
         urls.push(`maps://?q=${encode(placeName)}&ll=${encode(ll)}&z=18`);
       }
       urls.push(`https://maps.apple.com/?q=${encode(placeName)}&ll=${encode(ll)}&z=18`);
     }
-
-    // 2) If Apple still resolves to an address, fall back to a POI search near ll
-    // with a tighter query (name + address).
-    const searchQuery = namePlusAddress || placeName || formattedAddress || ll;
-    if (Platform.OS === "ios") {
-      urls.push(`maps://?q=${encode(searchQuery)}&near=${encode(ll)}`);
-    }
-    urls.push(`https://maps.apple.com/?q=${encode(searchQuery)}&near=${encode(ll)}`);
 
     return openFirstWorkingUrl(urls);
   }
@@ -76,8 +85,17 @@ export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArg
     const wazeQuery =
       placeName && formattedAddress ? `${placeName}, ${formattedAddress}` : placeName || formattedAddress || ll;
 
-    // Waze supports combining q (search terms) and ll (search center).
-    // Including address in q helps disambiguate chains (e.g., multiple 7‑Eleven).
+    // Prefer name-first navigation so Waze resolves the POI and labels it by name.
+    if (placeName) {
+      urls.push(`waze://?q=${encode(placeName)}&navigate=yes`);
+      urls.push(`https://waze.com/ul?q=${encode(placeName)}&navigate=yes`);
+    }
+
+    // If needed, disambiguate with address (helps chains / multi-tenant addresses).
+    urls.push(`waze://?q=${encode(wazeQuery)}&navigate=yes`);
+    urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}&navigate=yes`);
+
+    // If Waze can't resolve by query, bias the search to the known coordinate.
     urls.push(`waze://?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
     urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
 
