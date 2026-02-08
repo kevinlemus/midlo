@@ -24,6 +24,10 @@ function encode(v: string): string {
   return encodeURIComponent(v);
 }
 
+function normalizeText(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
+}
+
 /**
  * Opens a specific place in a map provider.
  *
@@ -31,28 +35,42 @@ function encode(v: string): string {
  * We prefer native app schemes when available, then fall back to universal links.
  */
 export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArgs) {
-  const placeName = typeof args.name === "string" ? args.name.trim() : "";
+  const placeName = normalizeText(args.name);
+  const formattedAddress = normalizeText(args.formattedAddress);
   const label = placeName || "Point of interest";
   const ll = `${f(args.lat)},${f(args.lng)}`;
 
-  // Note: we intentionally avoid passing destination addresses for Apple/Waze,
-  // because those UIs tend to display the address label.
+  // Apple Maps and Waze often display a reverse-geocoded street label when you
+  // open a raw lat/lng pin. To match "search in maps" behavior (showing the
+  // POI name like "McDonald's"), we open them using a POI search near the
+  // place coordinates whenever we have a name.
   if (provider === "apple") {
     const urls: string[] = [];
-    // iOS native scheme tends to open directly in Maps.
+
+    const query = placeName || formattedAddress || ll;
+    // Use search + near hint to resolve a POI by name (vs. labeling a pin).
+    // Apple docs: q is treated like user-typed search; near biases results.
     if (Platform.OS === "ios") {
-      urls.push(`maps://?q=${encode(label)}&ll=${encode(ll)}&z=18`);
+      urls.push(`maps://?q=${encode(query)}&near=${encode(ll)}`);
     }
-    urls.push(`https://maps.apple.com/?q=${encode(label)}&ll=${encode(ll)}&z=18`);
+    urls.push(`https://maps.apple.com/?q=${encode(query)}&near=${encode(ll)}`);
     return openFirstWorkingUrl(urls);
   }
 
   if (provider === "waze") {
     const urls: string[] = [];
-    // Prefer name-only so Waze shows the name, not a reverse-geocoded address.
-    urls.push(`waze://?q=${encode(label)}&navigate=yes`);
-    urls.push(`https://waze.com/ul?q=${encode(label)}&navigate=yes`);
-    // If the app can't resolve by name (rare), last-resort coordinate navigation.
+    const query = placeName || formattedAddress || ll;
+    // Waze deep links support combining q (search terms) and ll (search center).
+    // This helps resolve a specific POI near the known coordinate and keeps the
+    // UI labeled by place name rather than a street address.
+    if (placeName) {
+      urls.push(`waze://?q=${encode(placeName)}&ll=${encode(ll)}&navigate=yes`);
+      urls.push(`https://waze.com/ul?q=${encode(placeName)}&ll=${encode(ll)}&navigate=yes`);
+    } else {
+      urls.push(`waze://?q=${encode(query)}&navigate=yes`);
+      urls.push(`https://waze.com/ul?q=${encode(query)}&navigate=yes`);
+    }
+    // Last-resort coordinate navigation.
     urls.push(`https://waze.com/ul?ll=${encode(ll)}&navigate=yes`);
     return openFirstWorkingUrl(urls);
   }

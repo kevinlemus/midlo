@@ -82,28 +82,26 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   // Apple Maps:
-  // - Use q as a *pin label* by explicitly defining ll.
-  //   Apple docs: q can be used as a label if location is explicitly defined in ll.
-  // - Avoid sll/near here to reduce search-mode behavior that can surface an address label.
+  // Prefer POI search behavior so the result is labeled by place name (like when
+  // a user types the name into Apple Maps), instead of opening a raw pin that can
+  // be labeled with the reverse-geocoded street address.
   const apple = (() => {
     const u = new URL("https://maps.apple.com/");
-    u.searchParams.set("q", labelQuery);
-    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
-    u.searchParams.set("z", "18");
+    // If we have a name, keep the query name-forward.
+    const appleQuery = placeName || query;
+    u.searchParams.set("q", appleQuery);
+    // Bias search toward the known coordinate.
+    u.searchParams.set("near", `${f(lat)},${f(lng)}`);
     return u.toString();
   })();
 
   // Waze:
-  // - q=<place name> so it displays the name (not an address)
-  // - If we include ll=, Waze can prefer the reverse-geocoded address label.
-  //   When we have a name, omit ll and let Waze resolve the POI by name.
-  //   If we don't have a name, fall back to ll navigation.
+  // Use q=<place name> and ll=<lat,lng> together so Waze can resolve the POI near
+  // that location, which tends to keep the UI labeled by place name.
   const waze = (() => {
     const u = new URL("https://waze.com/ul");
-    u.searchParams.set("q", labelQuery);
-    if (!placeName) {
-      u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
-    }
+    u.searchParams.set("q", placeName || labelQuery);
+    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
     u.searchParams.set("navigate", "yes");
     return u.toString();
   })();
