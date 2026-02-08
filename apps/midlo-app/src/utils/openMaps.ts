@@ -1,5 +1,6 @@
 import { Linking, Platform } from "react-native";
 import type { PlaceMapsArgs } from "./maps";
+import { openAppleMapsPlace } from "midlo-apple-maps";
 
 export type MapsProvider = "google" | "apple" | "waze";
 
@@ -45,6 +46,13 @@ export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArg
   // POI name like "McDonald's"), we open them using a POI search near the
   // place coordinates whenever we have a name.
   if (provider === "apple") {
+    // iOS: Use MapKit via a tiny native module so the POI label is the place
+    // name (Apple URL schemes frequently re-label pins to the street address).
+    if (Platform.OS === "ios" && placeName) {
+      const opened = await openAppleMapsPlace(placeName, args.lat, args.lng);
+      if (opened) return true;
+    }
+
     const urls: string[] = [];
 
     const namePlusAddress = placeName && formattedAddress ? `${placeName}, ${formattedAddress}` : "";
