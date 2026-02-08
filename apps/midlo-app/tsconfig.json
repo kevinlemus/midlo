@@ -2,6 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "types": ["react", "react-native"],
+    "lib": ["ES2020"],
     "baseUrl": ".",
     "noImplicitAny": false,
     "paths": {

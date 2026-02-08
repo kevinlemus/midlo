@@ -62,16 +62,15 @@ function getDevServerHost(): string | null {
 function normalizeHttpBaseUrl(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    return null;
-  }
+  if (!/^https?:\/\//i.test(trimmed)) return null;
 
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  if (!url.hostname || !url.hostname.trim()) return null;
-  return url.toString().replace(/\/$/, "");
+  const withoutTrailingSlash = trimmed.replace(/\/+$/, "");
+  const hostMatch = withoutTrailingSlash.match(
+    /^https?:\/\/([^\/:?#]+)(?::\d+)?(?:[/?#]|$)/i,
+  );
+  const hostname = hostMatch?.[1]?.trim();
+  if (!hostname) return null;
+  return withoutTrailingSlash;
 }
 
 function resolveApiBaseUrl(): string {
@@ -89,10 +88,6 @@ function resolveApiBaseUrl(): string {
   if (host) return `http://${host}:8080`;
 
   if (Platform.OS === "android") return "http://10.0.2.2:8080";
-
-  if (typeof window !== "undefined" && window.location?.hostname) {
-    return `http://${window.location.hostname}:8080`;
-  }
   return "http://localhost:8080";
 }
 
@@ -151,8 +146,10 @@ export const api = {
 };
 
 export function placePhotoUrl(photoName: string, maxWidthPx = 1200): string {
-  const url = new URL("/place-photo", API_BASE_URL);
-  url.searchParams.set("name", photoName);
-  url.searchParams.set("maxWidthPx", String(maxWidthPx));
-  return url.toString();
+  const base = `${API_BASE_URL}/place-photo`;
+  const params = [
+    `name=${encodeURIComponent(photoName)}`,
+    `maxWidthPx=${encodeURIComponent(String(maxWidthPx))}`,
+  ].join("&");
+  return `${base}?${params}`;
 }

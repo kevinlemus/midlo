@@ -4,6 +4,26 @@ export type MapsLinks = {
   waze: string;
 };
 
+function toQueryString(
+  params: Record<string, string | number | null | undefined>,
+): string {
+  const entries = Object.entries(params).filter(
+    ([, v]) => v !== null && v !== undefined && String(v).length > 0,
+  );
+  if (entries.length === 0) return "";
+  return entries
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join("&");
+}
+
+function withQuery(
+  baseUrl: string,
+  params: Record<string, string | number | null | undefined>,
+): string {
+  const qs = toQueryString(params);
+  return qs ? `${baseUrl}?${qs}` : baseUrl;
+}
+
 function f(n: number): string {
   // Keep URLs stable and readable.
   return Number.isFinite(n) ? n.toFixed(6) : '0';
@@ -86,27 +106,28 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   // Apple docs: q can be used as a label if the location is explicitly defined
   // in ll OR address. Using address tends to avoid transient coordinate pins.
   const apple = (() => {
-    const u = new URL("https://maps.apple.com/");
     if (placeName && address) {
-      u.searchParams.set("q", placeName);
-      u.searchParams.set("address", address);
-      return u.toString();
+      return withQuery("https://maps.apple.com/", {
+        q: placeName,
+        address,
+      });
     }
 
-    u.searchParams.set("q", labelQuery);
-    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
-    u.searchParams.set("z", "18");
-    return u.toString();
+    return withQuery("https://maps.apple.com/", {
+      q: labelQuery,
+      ll: `${f(lat)},${f(lng)}`,
+      z: "18",
+    });
   })();
 
   // Waze:
   // Prefer search-style link (q) over ll-navigation to avoid coordinate-only UIs.
   const waze = (() => {
-    const u = new URL("https://waze.com/ul");
     const wazeQuery = placeName && address ? `${placeName}, ${address}` : placeName || labelQuery;
-    u.searchParams.set("q", wazeQuery);
-    u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
-    return u.toString();
+    return withQuery("https://waze.com/ul", {
+      q: wazeQuery,
+      ll: `${f(lat)},${f(lng)}`,
+    });
   })();
 
   // Keep lat/lng referenced so callers can pass them consistently; useful for

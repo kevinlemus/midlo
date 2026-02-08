@@ -4,16 +4,27 @@ import type { Place } from "../services/api";
 function normalizeHttpsBaseUrl(raw: string): string | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    return null;
-  }
+  if (!/^https?:\/\//i.test(trimmed)) return null;
 
-  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-  if (!url.hostname) return null;
-  return url.toString().replace(/\/+$/, "");
+  const withoutTrailingSlash = trimmed.replace(/\/+$/, "");
+  const hostMatch = withoutTrailingSlash.match(
+    /^https?:\/\/([^\/:?#]+)(?::\d+)?(?:[/?#]|$)/i,
+  );
+  const hostname = hostMatch?.[1]?.trim();
+  if (!hostname) return null;
+  return withoutTrailingSlash;
+}
+
+function toQueryString(
+  params: Record<string, string | number | null | undefined>,
+): string {
+  const entries = Object.entries(params).filter(
+    ([, v]) => v !== null && v !== undefined && String(v).length > 0,
+  );
+  if (entries.length === 0) return "";
+  return entries
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join("&");
 }
 
 export function webBaseUrl(): string {
@@ -42,15 +53,16 @@ export function midpointShareUrl(
   placeIdBatches?: string[][],
   startBatchIndex?: number,
 ): string {
-  const u = new URL("/share/midpoint", webBaseUrl());
-  if (locationA) u.searchParams.set("a", locationA);
-  if (locationB) u.searchParams.set("b", locationB);
+  const base = `${webBaseUrl()}/share/midpoint`;
+  const params: Record<string, string> = {};
+  if (locationA) params.a = locationA;
+  if (locationB) params.b = locationB;
 
   // When sharing from an earlier batch, open the shared page on that batch
   // while still including all already-loaded batches.
   if (Number.isFinite(startBatchIndex)) {
     const idx = Math.max(0, Math.floor(startBatchIndex as number));
-    u.searchParams.set("bi", String(idx));
+    params.bi = String(idx);
   }
 
   // Share *all* batches scanned so far, but keep it compact (place IDs only).
@@ -60,20 +72,14 @@ export function midpointShareUrl(
       .map((batch) => (Array.isArray(batch) ? batch.filter(Boolean) : []))
       .filter((batch) => batch.length > 0);
     if (cleaned.length > 0) {
-      u.searchParams.set(
-        "p",
-        cleaned.map((b) => b.join(",")).join("|"),
-      );
+      params.p = cleaned.map((b) => b.join(",")).join("|");
     }
   }
 
-  return u.toString();
+  const qs = toQueryString(params);
+  return qs ? `${base}?${qs}` : base;
 }
 
 export function placeShareUrl(placeId: string): string {
-  const u = new URL(
-    `/share/place/${encodeURIComponent(placeId)}`,
-    webBaseUrl(),
-  );
-  return u.toString();
+  return `${webBaseUrl()}/share/place/${encodeURIComponent(placeId)}`;
 }

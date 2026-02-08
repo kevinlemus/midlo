@@ -53,6 +53,10 @@ Thumbs.db
 .idea/
 .history/
 
+# But keep shared VS Code settings versioned
+!.vscode/
+!.vscode/settings.json
+
 # -------------------------
 # TypeScript
 # -------------------------
