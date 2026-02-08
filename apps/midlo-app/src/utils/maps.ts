@@ -70,8 +70,9 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     placeName ||
     "Point of interest";
 
-  // Encourage the UI to display the actual place name ("Walmart").
-  const labelQuery = placeName || query;
+  // Visible label: MUST be the place name (never address, never coordinates).
+  // If name is missing, fall back to a neutral label rather than showing an address.
+  const labelQuery = placeName || "Point of interest";
 
   // Google: prefer placeId so it resolves to the canonical listing.
   const google = placeId
@@ -81,25 +82,23 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   // Apple Maps:
-  // - Always set q=<place name> so it shows the POI name
-  // - If we have an address, also set daddr=<address> so navigation targets the
-  //   correct location
-  // - Add ll= as a disambiguation hint
+  // - q=<place name> so it shows the POI name
+  // - DO NOT set daddr=<address> because Apple tends to show the address label
+  // - Use sll/ll as a disambiguation hint (search near this lat/lng)
   const apple = (() => {
     const u = new URL("http://maps.apple.com/");
     u.searchParams.set("q", labelQuery);
-    if (address) u.searchParams.set("daddr", address);
+    u.searchParams.set("sll", `${f(lat)},${f(lng)}`);
     u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
     return u.toString();
   })();
 
   // Waze:
-  // - Put the name first (then address) so it shows the place name, not just an
-  //   unlabeled coordinate pin
+  // - q=<place name> so it displays the name (not an address)
   // - Include ll= so it navigates to the specific instance
   const waze = (() => {
     const u = new URL("https://waze.com/ul");
-    u.searchParams.set("q", query);
+    u.searchParams.set("q", labelQuery);
     u.searchParams.set("ll", `${f(lat)},${f(lng)}`);
     u.searchParams.set("navigate", "yes");
     return u.toString();
