@@ -32,8 +32,34 @@ export default function ResultsPage() {
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
+  const rescanInFlightRef = useRef(false);
 
   const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
+
+  const uniqByKey = React.useCallback((items: Place[]): Place[] => {
+    const out: Place[] = [];
+    const seen = new Set<string>();
+    for (const p of items) {
+      const k = placeKey(p);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(p);
+    }
+    return out;
+  }, []);
+
+  const fillToFive = React.useCallback((items: Place[]): Place[] => {
+    const base = items.filter(Boolean);
+    if (base.length === 0) return [];
+
+    const out: Place[] = [...base];
+    let i = 0;
+    while (out.length < 5) {
+      out.push(base[i % base.length]);
+      i++;
+    }
+    return out.slice(0, 5);
+  }, []);
 
   const lastBatchIndex = Math.max(0, batches.length - 1);
   const canGoPrev = activeBatchIndex > 0;
@@ -121,6 +147,7 @@ export default function ResultsPage() {
 
   const handleSeeDifferentOptions = async () => {
     if (!midpoint) return;
+    if (rescanInFlightRef.current) return;
 
     if (!isOnLastBatch) {
       handleNextBatch();
@@ -187,8 +214,10 @@ export default function ResultsPage() {
 
   const handleRescanPlaces = async () => {
     if (!midpoint) return;
+    if (rescanInFlightRef.current) return;
     if (rescanCount >= MAX_RESCANS_PER_SEARCH) return;
 
+    rescanInFlightRef.current = true;
     setIsRescanning(true);
     setError(null);
 
@@ -198,6 +227,9 @@ export default function ResultsPage() {
       const seenKeys = new Set(seenPlaceKeysRef.current);
 
       let pool: Place[] = [];
+      let hadAnySuccessfulFetch = false;
+
+      let chosen: Place[] | null = null;
 
       for (let attempt = 0; attempt < 8; attempt++) {
         const coords =
@@ -205,41 +237,69 @@ export default function ResultsPage() {
             ? { lat: midpoint.lat, lng: midpoint.lng }
             : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
 
-        const batch = await api.getPlaces(coords.lat, coords.lng);
-        pool = pool.concat(batch);
+        try {
+          const batch = await api.getPlaces(coords.lat, coords.lng);
+          hadAnySuccessfulFetch = true;
+          pool = pool.concat(batch);
+        } catch {
+          continue;
+        }
 
         const next = pickFiveUnique(pool, current, seed).filter(
           (p) => !seenKeys.has(placeKey(p)),
         );
 
         if (next.length >= 5) {
-          const chosen = next.slice(0, 5);
-          const nextIndex = batches.length;
-          setBatches((prev) => [...prev, chosen]);
-          setActiveBatchIndex(nextIndex);
-          for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
-          setRescanCount((c) => c + 1);
-
-          track("places_rescanned" as Parameters<typeof track>[0], {
-            locationA,
-            locationB,
-            placesCount: 5,
-            source: "results_rescan",
-          });
-
-          return;
+          chosen = next.slice(0, 5);
+          break;
         }
       }
 
+      if (!chosen) {
+        const distinctPool = uniqByKey(pool);
+        const avoidCurrent = pickFiveUnique(distinctPool, current, seed);
+        if (avoidCurrent.length > 0) {
+          chosen = fillToFive(avoidCurrent);
+        } else {
+          const fallbackBase =
+            distinctPool.length > 0
+              ? distinctPool
+              : uniqByKey(batches.flat().length > 0 ? batches.flat() : current);
+          const randomized = shuffleWithSeed(fallbackBase, seed);
+          chosen = fillToFive(randomized);
+        }
+      }
+
+      if (chosen && chosen.length > 0) {
+        const nextIndex = batches.length;
+        const nextBatch = fillToFive(chosen);
+        setBatches((prev) => [...prev, nextBatch]);
+        setActiveBatchIndex(nextIndex);
+        for (const p of nextBatch) seenPlaceKeysRef.current.add(placeKey(p));
+        setRescanCount((c) => c + 1);
+
+        track("places_rescanned" as Parameters<typeof track>[0], {
+          locationA,
+          locationB,
+          placesCount: 5,
+          source: "results_rescan",
+        });
+
+        return;
+      }
+
       setNoMoreOptionsMessage(
-        "No nearby options were found for this midpoint. Try adjusting your locations and try again.",
+        !hadAnySuccessfulFetch
+          ? "Couldn’t refresh right now. Check your connection and try again."
+          : "No nearby options were found for this midpoint. Try adjusting your locations and try again.",
       );
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Couldn’t refresh options. Try again.",
+      setNoMoreOptionsMessage(
+        "Couldn’t refresh right now. Check your connection and try again.",
       );
     } finally {
       setIsRescanning(false);
+      rescanInFlightRef.current = false;
     }
   };
 

@@ -81,8 +81,34 @@ export default function Home() {
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const fromQueryRef = useRef(false);
   const seenPlaceKeysRef = useRef<Set<string>>(new Set());
+  const rescanInFlightRef = useRef(false);
 
   const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
+
+  const uniqByKey = React.useCallback((items: Place[]): Place[] => {
+    const out: Place[] = [];
+    const seen = new Set<string>();
+    for (const p of items) {
+      const k = placeKey(p);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(p);
+    }
+    return out;
+  }, []);
+
+  const fillToFive = React.useCallback((items: Place[]): Place[] => {
+    const base = items.filter(Boolean);
+    if (base.length === 0) return [];
+
+    const out: Place[] = [...base];
+    let i = 0;
+    while (out.length < 5) {
+      out.push(base[i % base.length]);
+      i++;
+    }
+    return out.slice(0, 5);
+  }, []);
 
   const storageKey = React.useMemo(() => {
     const a = (aText ?? "").trim();
@@ -486,6 +512,7 @@ export default function Home() {
 
   const handleSeeDifferentOptions = async () => {
     if (!midpoint) return;
+    if (rescanInFlightRef.current) return;
     if (!isOnLastBatch) {
       // On an older batch → this should never rescan, only navigate forward.
       handleNextBatch();
@@ -503,9 +530,11 @@ export default function Home() {
   };
 
   const handleRescan = async () => {
-    if (!midpoint || isRescanning) return;
+    if (!midpoint) return;
+    if (rescanInFlightRef.current) return;
     if (rescanCount >= MAX_RESCANS_PER_SEARCH) return;
 
+    rescanInFlightRef.current = true;
     setIsRescanning(true);
     setError(null);
 
@@ -516,6 +545,7 @@ export default function Home() {
 
       let chosen: Place[] | null = null;
       let pool: Place[] = [];
+      let hadAnySuccessfulFetch = false;
 
       for (let attempt = 0; attempt < 8; attempt++) {
         const coords =
@@ -523,9 +553,15 @@ export default function Home() {
             ? { lat: midpoint.lat, lng: midpoint.lng }
             : jitterLatLng(midpoint.lat, midpoint.lng, seed, attempt);
 
-        // eslint-disable-next-line no-await-in-loop
-        const batch = await api.getPlaces(coords.lat, coords.lng);
-        pool = pool.concat(batch);
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const batch = await api.getPlaces(coords.lat, coords.lng);
+          hadAnySuccessfulFetch = true;
+          pool = pool.concat(batch);
+        } catch {
+          // Try the next jittered coordinate.
+          continue;
+        }
 
         const next = pickFiveUnique(pool, current, seed).filter(
           (p) => !seenKeys.has(placeKey(p)),
@@ -537,18 +573,34 @@ export default function Home() {
         }
       }
 
+      if (!chosen) {
+        const distinctPool = uniqByKey(pool);
+        const avoidCurrent = pickFiveUnique(distinctPool, current, seed);
+        if (avoidCurrent.length > 0) {
+          chosen = fillToFive(avoidCurrent);
+        } else {
+          const fallbackBase =
+            distinctPool.length > 0
+              ? distinctPool
+              : uniqByKey(batches.flat().length > 0 ? batches.flat() : current);
+          const randomized = shuffleWithSeed(fallbackBase, seed);
+          chosen = fillToFive(randomized);
+        }
+      }
+
       if (chosen && chosen.length > 0) {
         const nextIndex = batches.length;
-        setBatches((prev) => [...prev, chosen]);
+        const nextBatch = fillToFive(chosen);
+        setBatches((prev) => [...prev, nextBatch]);
         setActiveBatchIndex(nextIndex);
-        for (const p of chosen) seenPlaceKeysRef.current.add(placeKey(p));
+        for (const p of nextBatch) seenPlaceKeysRef.current.add(placeKey(p));
 
         const a = aText || "";
         const b = bText || "";
         const nextParams: Record<string, string> = {};
         if (a) nextParams.a = a;
         if (b) nextParams.b = b;
-        nextParams.pl = encodePlacesSnapshotParam(chosen);
+        nextParams.pl = encodePlacesSnapshotParam(nextBatch);
         setSearchParams(nextParams, { replace: true });
 
         setRescanCount((c) => c + 1);
@@ -561,15 +613,18 @@ export default function Home() {
         });
       } else {
         setNoMoreOptionsMessage(
-          "No nearby options were found for this midpoint. Try adjusting your locations and try again.",
+          !hadAnySuccessfulFetch
+            ? "Couldn’t refresh right now. Check your connection and try again."
+            : "No nearby options were found for this midpoint. Try adjusting your locations and try again.",
         );
       }
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Something went wrong. Try again.",
+      setNoMoreOptionsMessage(
+        "Couldn’t refresh right now. Check your connection and try again.",
       );
     } finally {
       setIsRescanning(false);
+      rescanInFlightRef.current = false;
     }
   };
 
@@ -998,8 +1053,8 @@ export default function Home() {
                           whiteSpace: "nowrap",
                           textAlign: "center",
                           opacity:
-                            (isOnLastBatch && !canRescanMore) ||
-                            (!isOnLastBatch && Boolean(noMoreOptionsMessage))
+                            Boolean(noMoreOptionsMessage) ||
+                            (isOnLastBatch && !canRescanMore)
                               ? 1
                               : 0,
                           transition: "opacity 180ms ease",
