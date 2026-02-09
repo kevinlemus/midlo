@@ -506,7 +506,8 @@ export default function Home() {
   const isOnLastBatch = activeBatchIndex === lastBatchIndex;
   const canRescanMore = batches.length < TOTAL_BATCHES;
 
-  const canPressNewOptions = !isRescanning && (canGoNextStored || canRescanMore);
+  const canPressNewOptions =
+    !isRescanning && places.length > 0 && (canGoNextStored || canRescanMore);
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
@@ -1129,7 +1130,7 @@ export default function Home() {
                       textAlign: "center",
                     }}
                   >
-                    No nearby options were found for this midpoint. Try adjusting your locations, then tap “New options”.
+                    No nearby options were found for this midpoint. Try adjusting your locations.
                   </div>
                 ) : null}
 

@@ -76,7 +76,8 @@ export default function ResultsPage() {
   const canGoNextStored = activeBatchIndex < lastBatchIndex;
   const isOnLastBatch = activeBatchIndex === lastBatchIndex;
   const canRescanMore = batches.length < TOTAL_BATCHES;
-  const canPressNewOptions = !isRescanning && (canGoNextStored || canRescanMore);
+  const canPressNewOptions =
+    !isRescanning && places.length > 0 && (canGoNextStored || canRescanMore);
 
   const isDisabled = !locationA || !locationB || isLoading || isRescanning;
 
@@ -749,7 +750,7 @@ export default function ResultsPage() {
                       textAlign: "center",
                     }}
                   >
-                    No nearby options were found for this midpoint. Try adjusting your locations, then tap “New options”.
+                    No nearby options were found for this midpoint. Try adjusting your locations.
                   </div>
                 ) : null}
 

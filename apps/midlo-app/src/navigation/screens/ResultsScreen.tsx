@@ -184,7 +184,8 @@ export default function ResultsScreen() {
   const isOnLastBatch = activeBatchIndex === lastBatchIndex;
   const canRescanMore = batches.length < TOTAL_BATCHES;
 
-  const canPressNewOptions = !isRescanning && (canGoNextStored || canRescanMore);
+  const canPressNewOptions =
+    !isRescanning && currentPlaces.length > 0 && (canGoNextStored || canRescanMore);
 
   const defaultNoMoreText = "Try adjusting your locations for more options.";
   const messageText =
@@ -730,7 +731,7 @@ export default function ResultsScreen() {
                     textAlign: "center",
                   }}
                 >
-                  No nearby options were found for this midpoint. Try adjusting your locations, then tap “New options”.
+                  No nearby options were found for this midpoint. Try adjusting your locations.
                 </Text>
               </View>
             ) : null}
