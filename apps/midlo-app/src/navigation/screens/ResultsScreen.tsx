@@ -184,15 +184,20 @@ export default function ResultsScreen() {
   const isOnLastBatch = activeBatchIndex === lastBatchIndex;
   const canRescanMore = batches.length < TOTAL_BATCHES;
 
-  const shouldShowNoMoreMessage = isOnLastBatch && !canRescanMore;
+  const canPressNewOptions = !isRescanning && (canGoNextStored || canRescanMore);
+
+  const defaultNoMoreText = "Try adjusting your locations for more options.";
+  const messageText =
+    noMoreOptionsMessage ?? (isOnLastBatch && !canRescanMore ? defaultNoMoreText : null);
+  const shouldShowMessage = Boolean(messageText);
   const messageOpacity = React.useRef(new Animated.Value(0)).current;
   React.useEffect(() => {
     Animated.timing(messageOpacity, {
-      toValue: shouldShowNoMoreMessage ? 1 : 0,
+      toValue: shouldShowMessage ? 1 : 0,
       duration: 180,
       useNativeDriver: true,
     }).start();
-  }, [messageOpacity, shouldShowNoMoreMessage]);
+  }, [messageOpacity, shouldShowMessage]);
 
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
@@ -208,6 +213,7 @@ export default function ResultsScreen() {
 
   const handleSeeDifferentOptions = async () => {
     if (!midpoint) return;
+    if (isRescanning) return;
 
     if (!isOnLastBatch) {
       // If a "next" batch exists but is empty for any reason, force a rescan
@@ -322,6 +328,7 @@ export default function ResultsScreen() {
 
   const handleRescan = async () => {
     if (!midpoint) return;
+    if (isRescanning) return;
     if (rescanCount >= MAX_RESCANS_PER_SEARCH) return;
 
     setIsRescanning(true);
@@ -407,6 +414,10 @@ export default function ResultsScreen() {
       } else if (!hadAnySuccessfulFetch) {
         setNoMoreOptionsMessage(
           "Couldn’t refresh right now. Check your connection and try again.",
+        );
+      } else {
+        setNoMoreOptionsMessage(
+          "No nearby options were found for this midpoint. Try adjusting your locations and try again.",
         );
       }
     } catch {
@@ -630,10 +641,9 @@ export default function ResultsScreen() {
                   {/* NEW OPTIONS */}
                   <Pressable
                     onPress={() => void handleSeeDifferentOptions()}
-                    disabled={!isOnLastBatch || !canRescanMore || isRescanning}
+                    disabled={!canPressNewOptions}
                     style={({ pressed }) => {
-                      const enabled =
-                        isOnLastBatch && canRescanMore && !isRescanning;
+                      const enabled = canPressNewOptions;
                       return [
                         {
                           flexGrow: 1.6,
@@ -685,8 +695,7 @@ export default function ResultsScreen() {
                       textAlign: "center",
                     }}
                   >
-                    {noMoreOptionsMessage ??
-                      "Try adjusting your locations for more options."}
+                    {messageText ?? ""}
                   </Animated.Text>
                 </View>
               </View>
@@ -702,6 +711,29 @@ export default function ResultsScreen() {
                 A few places that make meeting in the middle actually feel good.
               </Text>
             </View>
+
+            {currentPlaces.length === 0 ? (
+              <View
+                style={{
+                  padding: theme.spacing.md,
+                  borderWidth: 1,
+                  borderColor: theme.colors.divider,
+                  borderRadius: theme.radii.md,
+                  backgroundColor: theme.colors.surface,
+                  ...theme.shadow.card,
+                }}
+              >
+                <Text
+                  style={{
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.typography.caption,
+                    textAlign: "center",
+                  }}
+                >
+                  No nearby options were found for this midpoint. Try adjusting your locations, then tap “New options”.
+                </Text>
+              </View>
+            ) : null}
 
             <View style={{ gap: theme.spacing.sm }}>
               {currentPlaces.map((p, idx) => (

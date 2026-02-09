@@ -470,6 +470,8 @@ export default function Home() {
   const isOnLastBatch = activeBatchIndex === lastBatchIndex;
   const canRescanMore = batches.length < TOTAL_BATCHES;
 
+  const canPressNewOptions = !isRescanning && (canGoNextStored || canRescanMore);
+
   const handlePrevBatch = () => {
     if (!canGoPrev) return;
     setNoMoreOptionsMessage(null);
@@ -535,7 +537,7 @@ export default function Home() {
         }
       }
 
-      if (chosen) {
+      if (chosen && chosen.length > 0) {
         const nextIndex = batches.length;
         setBatches((prev) => [...prev, chosen]);
         setActiveBatchIndex(nextIndex);
@@ -559,7 +561,7 @@ export default function Home() {
         });
       } else {
         setNoMoreOptionsMessage(
-          "Try adjusting your locations for more options.",
+          "No nearby options were found for this midpoint. Try adjusting your locations and try again.",
         );
       }
     } catch (e) {
@@ -833,7 +835,7 @@ export default function Home() {
             </div>
           )}
 
-          {places.length > 0 && (
+          {midpoint && (
             <div style={{ marginTop: "var(--space-lg)" }}>
               <div
                 style={{
@@ -949,7 +951,7 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={() => void handleSeeDifferentOptions()}
-                        disabled={!isOnLastBatch || !canRescanMore || isRescanning}
+                        disabled={!canPressNewOptions}
                         style={{
                           height: 32,
                           flex: "1.6 1 0",
@@ -960,14 +962,13 @@ export default function Home() {
                           backgroundColor: "var(--color-surface)",
                           color: "var(--color-primary-dark)",
                           cursor:
-                            !isOnLastBatch || !canRescanMore || isRescanning
+                            !canPressNewOptions
                               ? "default"
                               : "pointer",
                           fontSize: "var(--font-size-caption)",
                           fontWeight: 600,
                           letterSpacing: 0.2,
-                          opacity:
-                            isOnLastBatch && canRescanMore && !isRescanning ? 1 : 0.42,
+                          opacity: canPressNewOptions ? 1 : 0.42,
                           transition:
                             "opacity 180ms ease, background-color 180ms ease, border-color 180ms ease",
                           whiteSpace: "nowrap",
@@ -1036,6 +1037,23 @@ export default function Home() {
                   pointerEvents: isRescanning ? "none" : "auto",
                 }}
               >
+                {places.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "var(--space-md)",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--color-divider)",
+                      backgroundColor: "var(--color-surface)",
+                      boxShadow: "var(--shadow-card)",
+                      fontSize: "var(--font-size-caption)",
+                      color: "var(--color-text-secondary)",
+                      textAlign: "center",
+                    }}
+                  >
+                    No nearby options were found for this midpoint. Try adjusting your locations, then tap “New options”.
+                  </div>
+                ) : null}
+
                 {places.map((p, idx) => (
                   <PlaceCard
                     key={p.placeId ?? String(idx)}

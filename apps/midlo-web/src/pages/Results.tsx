@@ -40,6 +40,7 @@ export default function ResultsPage() {
   const canGoNextStored = activeBatchIndex < lastBatchIndex;
   const isOnLastBatch = activeBatchIndex === lastBatchIndex;
   const canRescanMore = batches.length < TOTAL_BATCHES;
+  const canPressNewOptions = !isRescanning && (canGoNextStored || canRescanMore);
 
   const isDisabled = !locationA || !locationB || isLoading || isRescanning;
 
@@ -230,7 +231,9 @@ export default function ResultsPage() {
         }
       }
 
-      setNoMoreOptionsMessage("Try adjusting your locations for more options.");
+      setNoMoreOptionsMessage(
+        "No nearby options were found for this midpoint. Try adjusting your locations and try again.",
+      );
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "Couldn’t refresh options. Try again.",
@@ -470,7 +473,7 @@ export default function ResultsPage() {
           )}
 
           {/* RESULTS */}
-          {places.length > 0 && (
+          {midpoint && (
             <div>
               {/* HEADER */}
               <div
@@ -573,9 +576,7 @@ export default function ResultsPage() {
                     <button
                       type="button"
                       onClick={() => void handleSeeDifferentOptions()}
-                      disabled={
-                        !isOnLastBatch || !canRescanMore || isRescanning
-                      }
+                      disabled={!canPressNewOptions}
                       className="midlo-button midlo-button-secondary"
                       style={{
                         height: 32,
@@ -586,10 +587,7 @@ export default function ResultsPage() {
                         borderRadius: "var(--radius-pill)",
                         fontWeight: 600,
                         letterSpacing: 0.2,
-                        opacity:
-                          isOnLastBatch && canRescanMore && !isRescanning
-                            ? 1
-                            : 0.42,
+                        opacity: canPressNewOptions ? 1 : 0.42,
                         transition: "opacity 180ms ease",
                       }}
                     >
@@ -613,7 +611,11 @@ export default function ResultsPage() {
                       style={{
                         fontSize: "var(--font-size-caption)",
                         color: "var(--color-muted)",
-                        opacity: isOnLastBatch && !canRescanMore ? 1 : 0,
+                        opacity:
+                          Boolean(noMoreOptionsMessage) ||
+                          (isOnLastBatch && !canRescanMore)
+                            ? 1
+                            : 0,
                         transition: "opacity 180ms ease",
                         whiteSpace: "nowrap",
                         textAlign: "center",
@@ -621,7 +623,9 @@ export default function ResultsPage() {
                       }}
                     >
                       {noMoreOptionsMessage ??
-                        "Try adjusting your locations for more options."}
+                        (isOnLastBatch && !canRescanMore
+                          ? "Try adjusting your locations for more options."
+                          : "")}
                     </span>
                   </div>
 
@@ -650,6 +654,23 @@ export default function ResultsPage() {
                   pointerEvents: isRescanning ? "none" : "auto",
                 }}
               >
+                {places.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "var(--space-md)",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--color-divider)",
+                      backgroundColor: "var(--color-surface)",
+                      boxShadow: "var(--shadow-card)",
+                      fontSize: "var(--font-size-caption)",
+                      color: "var(--color-text-secondary)",
+                      textAlign: "center",
+                    }}
+                  >
+                    No nearby options were found for this midpoint. Try adjusting your locations, then tap “New options”.
+                  </div>
+                ) : null}
+
                 {places.map((p) => (
                   <button
                     key={placeKey(p)}
