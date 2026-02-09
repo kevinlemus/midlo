@@ -29,7 +29,7 @@ export function mapsLinks(lat: number, lng: number): MapsLinks {
     // Keep ll explicit so Apple Maps is anchored at the coordinate.
     apple: withQuery("https://maps.apple.com/", { ll, q: "Midpoint", z: "18" }),
     // Prefer search view so a human label is shown.
-    waze: withQuery("https://waze.com/ul", { ll, q: "Midpoint" }),
+    waze: withQuery("https://waze.com/ul", { ll, q: "Midpoint", navigate: "yes" }),
   };
 }
 
@@ -45,7 +45,7 @@ export function mapsLinksWithPlaceId(
     google: `https://www.google.com/maps/search/?api=1&query=${encoded}&query_place_id=${encodedId}`,
     // Apple Maps does not understand Google Place IDs; anchor by coordinate.
     apple: withQuery("https://maps.apple.com/", { ll: encoded, q: "Point of interest", z: "18" }),
-    waze: withQuery("https://waze.com/ul", { ll: encoded, navigate: "yes" }),
+    waze: withQuery("https://waze.com/ul", { ll: encoded, q: "Point of interest", navigate: "yes" }),
   };
 }
 
@@ -87,6 +87,7 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   const waze = withQuery("https://waze.com/ul", {
     q: placeName || address || label,
     ll,
+    navigate: "yes",
   });
 
   return { google, apple, waze };
