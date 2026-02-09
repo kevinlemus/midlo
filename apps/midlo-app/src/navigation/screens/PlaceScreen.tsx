@@ -520,7 +520,18 @@ export default function PlaceScreen() {
                             title="Get directions"
                             onPress={() => {
                               track("directions_clicked", { placeId });
-                              Linking.openURL(defaultUrl);
+                              if (Platform.OS === "ios") {
+                                void openPlaceInMaps("apple", {
+                                  name: details.name,
+                                  formattedAddress: details.formattedAddress,
+                                  lat,
+                                  lng,
+                                  placeId,
+                                });
+                                return;
+                              }
+
+                              Linking.openURL(googleUrl);
                             }}
                           />
 

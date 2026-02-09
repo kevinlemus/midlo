@@ -36,9 +36,9 @@ export function mapsLinks(lat: number, lng: number): MapsLinks {
     // Google Maps Search API
     google: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`,
     // Apple Maps
-    apple: `http://maps.apple.com/?ll=${encodeURIComponent(q)}`,
+    apple: `https://maps.apple.com/?ll=${encodeURIComponent(q)}&q=${encodeURIComponent("Midpoint")}&z=18`,
     // Waze
-    waze: `https://waze.com/ul?ll=${encodeURIComponent(q)}&navigate=yes`,
+    waze: `https://waze.com/ul?ll=${encodeURIComponent(q)}&q=${encodeURIComponent("Midpoint")}&navigate=yes`,
   };
 }
 
@@ -102,20 +102,15 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   // Apple Maps:
-  // Prefer pin label with explicit address:
-  // Apple docs: q can be used as a label if the location is explicitly defined
-  // in ll OR address. Using address tends to avoid transient coordinate pins.
+  // Avoid using `address=` because it commonly re-labels the destination to a
+  // street address. Prefer `q` anchored with `ll` so the visible label is the
+  // place name when available.
   const apple = (() => {
-    if (placeName && address) {
-      return withQuery("https://maps.apple.com/", {
-        q: placeName,
-        address,
-      });
-    }
-
+    const ll = `${f(lat)},${f(lng)}`;
+    const q = placeName || address || labelQuery;
     return withQuery("https://maps.apple.com/", {
-      q: labelQuery,
-      ll: `${f(lat)},${f(lng)}`,
+      q,
+      ll,
       z: "18",
     });
   })();
@@ -123,10 +118,11 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   // Waze:
   // Prefer search-style link (q) over ll-navigation to avoid coordinate-only UIs.
   const waze = (() => {
-    const wazeQuery = placeName && address ? `${placeName}, ${address}` : placeName || labelQuery;
+    const wazeQuery = placeName || labelQuery || address;
     return withQuery("https://waze.com/ul", {
       q: wazeQuery,
       ll: `${f(lat)},${f(lng)}`,
+      navigate: "yes",
     });
   })();
 

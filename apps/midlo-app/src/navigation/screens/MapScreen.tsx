@@ -17,7 +17,7 @@ import { theme } from 'theme';
 import type { RootStackParamList } from 'navigation';
 import MidloCard from '../../components/MidloCard';
 import MidloButton from '../../components/MidloButton';
-import { mapsLinks, mapsLinksWithPlaceId } from '../../utils/maps';
+import { openPointInMaps } from '../../utils/openMaps';
 
 import Logo from '../../assets/images/midlo_logo.png';
 
@@ -32,8 +32,6 @@ export default function MapScreen() {
     places: [],
   };
   const { midpoint, places } = route.params ?? fallbackParams;
-
-  const midpointLinks = mapsLinks(midpoint.lat, midpoint.lng);
 
   const mapRef = React.useRef<MapView | null>(null);
 
@@ -78,10 +76,13 @@ export default function MapScreen() {
     });
   }, [midpoint, places]);
 
-  const defaultDirectionsUrl =
-    Platform.OS === 'ios'
-      ? midpointLinks.apple
-      : midpointLinks.google;
+  const openDefaultDirections = React.useCallback(() => {
+    void openPointInMaps(Platform.OS === 'ios' ? 'apple' : 'google', {
+      lat: midpoint.lat,
+      lng: midpoint.lng,
+      label: 'Midpoint',
+    });
+  }, [midpoint.lat, midpoint.lng]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -175,7 +176,7 @@ export default function MapScreen() {
 
           <MidloButton
             title="Get directions"
-            onPress={() => Linking.openURL(defaultDirectionsUrl)}
+            onPress={openDefaultDirections}
           />
 
           <View
@@ -209,7 +210,13 @@ export default function MapScreen() {
                 }}
               >
                 <Pressable
-                  onPress={() => Linking.openURL(midpointLinks.google)}
+                  onPress={() =>
+                    void openPointInMaps('google', {
+                      lat: midpoint.lat,
+                      lng: midpoint.lng,
+                      label: 'Midpoint',
+                    })
+                  }
                   style={{
                     paddingVertical: 6,
                     paddingHorizontal: 10,
@@ -229,7 +236,13 @@ export default function MapScreen() {
                 </Pressable>
 
                 <Pressable
-                  onPress={() => Linking.openURL(midpointLinks.apple)}
+                  onPress={() =>
+                    void openPointInMaps('apple', {
+                      lat: midpoint.lat,
+                      lng: midpoint.lng,
+                      label: 'Midpoint',
+                    })
+                  }
                   style={{
                     paddingVertical: 6,
                     paddingHorizontal: 10,
@@ -249,7 +262,13 @@ export default function MapScreen() {
                 </Pressable>
 
                 <Pressable
-                  onPress={() => Linking.openURL(midpointLinks.waze)}
+                  onPress={() =>
+                    void openPointInMaps('waze', {
+                      lat: midpoint.lat,
+                      lng: midpoint.lng,
+                      label: 'Midpoint',
+                    })
+                  }
                   style={{
                     paddingVertical: 6,
                     paddingHorizontal: 10,

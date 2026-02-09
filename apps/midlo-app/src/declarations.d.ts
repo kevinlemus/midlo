@@ -9,4 +9,10 @@ declare module "midlo-apple-maps" {
     lat: number,
     lng: number,
   ): Promise<boolean>;
+
+  export function openAppleMapsPOI(
+    name: string,
+    lat: number,
+    lng: number,
+  ): Promise<boolean>;
 }

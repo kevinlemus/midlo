@@ -3,3 +3,9 @@ export declare function openAppleMapsPlace(
   lat: number,
   lng: number,
 ): Promise<boolean>;
+
+export declare function openAppleMapsPOI(
+  name: string,
+  lat: number,
+  lng: number,
+): Promise<boolean>;
