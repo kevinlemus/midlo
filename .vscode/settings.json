@@ -4,16 +4,8 @@
     "typescript.enablePromptUseWorkspaceTsdk": true,
     "typescript.tsserver.experimental.enableProjectDiagnostics": true,
     "typescript.tsserver.maxTsServerMemory": 4096,
-    "typescript.tsserver.exclude": [
-        "**/node_modules/**",
-        "**/.pnpm/**"
-    ],
-    "javascript.tsserver.exclude": [
-        "**/node_modules/**",
-        "**/.pnpm/**"
-    ],
     "files.watcherExclude": {
         "**/node_modules/**": true,
-        "**/.pnpm/**": true
+        "**/node_modules/.pnpm/**": true
     }
 }
