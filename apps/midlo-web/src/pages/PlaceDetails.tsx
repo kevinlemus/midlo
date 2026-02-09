@@ -4,22 +4,8 @@ import "../styles/theme.css";
 import "../styles/globals.css";
 import { api, placePhotoUrl } from "../services/api";
 import type { PlaceDetails, PlacePhoto } from "../types";
-import { mapsLinksWithPlaceId } from "../utils/maps";
+import { mapsLinksForPlace } from "../utils/maps";
 import OpenInAppBanner from "../components/OpenInAppBanner";
-
-function mapsLinks(lat: number, lng: number, placeId?: string | null) {
-  const ll = `${lat},${lng}`;
-
-  if (placeId) {
-    return mapsLinksWithPlaceId(lat, lng, placeId);
-  }
-
-  return {
-    google: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ll)}`,
-    apple: `https://maps.apple.com/?daddr=${encodeURIComponent(ll)}`,
-    waze: `https://www.waze.com/ul?ll=${encodeURIComponent(ll)}&navigate=yes`,
-  };
-}
 
 export default function PlaceDetailsPage() {
   const { placeId } = useParams();
@@ -464,11 +450,13 @@ export default function PlaceDetailsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const links = mapsLinks(
-                        lat as number,
-                        lng as number,
-                        placeId ?? undefined,
-                      );
+                      const links = mapsLinksForPlace({
+                        name: details?.name,
+                        formattedAddress: details?.formattedAddress,
+                        lat: lat as number,
+                        lng: lng as number,
+                        placeId: placeId ?? null,
+                      });
                       const isIOS = /iPad|iPhone|iPod/.test(
                         navigator.userAgent,
                       );
@@ -503,11 +491,13 @@ export default function PlaceDetailsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const links = mapsLinks(
-                          lat as number,
-                          lng as number,
-                          placeId ?? undefined,
-                        );
+                        const links = mapsLinksForPlace({
+                          name: details?.name,
+                          formattedAddress: details?.formattedAddress,
+                          lat: lat as number,
+                          lng: lng as number,
+                          placeId: placeId ?? null,
+                        });
                         window.open(links.google, "_blank");
                       }}
                       style={{
@@ -528,11 +518,13 @@ export default function PlaceDetailsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const links = mapsLinks(
-                          lat as number,
-                          lng as number,
-                          placeId ?? undefined,
-                        );
+                        const links = mapsLinksForPlace({
+                          name: details?.name,
+                          formattedAddress: details?.formattedAddress,
+                          lat: lat as number,
+                          lng: lng as number,
+                          placeId: placeId ?? null,
+                        });
                         window.open(links.apple, "_blank");
                       }}
                       style={{
@@ -553,11 +545,13 @@ export default function PlaceDetailsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const links = mapsLinks(
-                          lat as number,
-                          lng as number,
-                          placeId ?? undefined,
-                        );
+                        const links = mapsLinksForPlace({
+                          name: details?.name,
+                          formattedAddress: details?.formattedAddress,
+                          lat: lat as number,
+                          lng: lng as number,
+                          placeId: placeId ?? null,
+                        });
                         window.open(links.waze, "_blank");
                       }}
                       style={{
