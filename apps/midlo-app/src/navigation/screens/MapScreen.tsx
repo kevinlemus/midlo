@@ -6,18 +6,18 @@ import {
   Image,
   ScrollView,
   Pressable,
-  Linking,
   Platform,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
-import MapView, { Marker, LatLng } from 'react-native-maps';
+import MapView, { Marker, LatLng, Polyline } from 'react-native-maps';
 
 import { theme } from 'theme';
 import type { RootStackParamList } from 'navigation';
 import MidloCard from '../../components/MidloCard';
 import MidloButton from '../../components/MidloButton';
 import { openPointInMaps } from '../../utils/openMaps';
+import { api } from '../../services/api';
 
 import Logo from '../../assets/images/midlo_logo.png';
 
@@ -30,10 +30,52 @@ export default function MapScreen() {
   const fallbackParams: RootStackParamList['Map'] = {
     midpoint: { lat: 0, lng: 0 },
     places: [],
+    locationA: '',
+    locationB: '',
   };
-  const { midpoint, places } = route.params ?? fallbackParams;
+  const { midpoint, places, locationA, locationB, locationAPlaceId, locationBPlaceId } =
+    route.params ?? fallbackParams;
 
   const mapRef = React.useRef<MapView | null>(null);
+
+  const [locationACoords, setLocationACoords] = React.useState<
+    { lat: number; lng: number } | null
+  >(null);
+  const [locationBCoords, setLocationBCoords] = React.useState<
+    { lat: number; lng: number } | null
+  >(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        if (locationAPlaceId) {
+          const a = await api.getPlaceDetails(locationAPlaceId);
+          if (!cancelled) setLocationACoords({ lat: a.lat, lng: a.lng });
+        } else if (!cancelled) {
+          setLocationACoords(null);
+        }
+      } catch {
+        if (!cancelled) setLocationACoords(null);
+      }
+
+      try {
+        if (locationBPlaceId) {
+          const b = await api.getPlaceDetails(locationBPlaceId);
+          if (!cancelled) setLocationBCoords({ lat: b.lat, lng: b.lng });
+        } else if (!cancelled) {
+          setLocationBCoords(null);
+        }
+      } catch {
+        if (!cancelled) setLocationBCoords(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locationAPlaceId, locationBPlaceId]);
 
   // ⭐ Custom midpoint pin (Expo-safe, no PNG required)
   const midpointPin = (
@@ -64,6 +106,12 @@ export default function MapScreen() {
     if (!mapRef.current) return;
 
     const coords: LatLng[] = [
+      ...(locationACoords
+        ? [{ latitude: locationACoords.lat, longitude: locationACoords.lng }]
+        : []),
+      ...(locationBCoords
+        ? [{ latitude: locationBCoords.lat, longitude: locationBCoords.lng }]
+        : []),
       { latitude: midpoint.lat, longitude: midpoint.lng },
       ...places.map((p) => ({ latitude: p.lat, longitude: p.lng })),
     ];
@@ -74,7 +122,32 @@ export default function MapScreen() {
       edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
       animated: true,
     });
-  }, [midpoint, places]);
+  }, [midpoint, places, locationACoords, locationBCoords]);
+
+  const abPin = (label: 'A' | 'B') => (
+    <View
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: theme.colors.primaryDark,
+        borderWidth: 3,
+        borderColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      <Text
+        style={{
+          color: 'white',
+          fontSize: theme.typography.caption,
+          fontWeight: theme.typography.weight.bold as any,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
 
   const openDefaultDirections = React.useCallback(() => {
     void openPointInMaps(Platform.OS === 'ios' ? 'apple' : 'google', {
@@ -155,6 +228,49 @@ export default function MapScreen() {
                 longitudeDelta: 0.05,
               }}
             >
+              {locationACoords && locationBCoords ? (
+                <Polyline
+                  coordinates={[
+                    {
+                      latitude: locationACoords.lat,
+                      longitude: locationACoords.lng,
+                    },
+                    {
+                      latitude: locationBCoords.lat,
+                      longitude: locationBCoords.lng,
+                    },
+                  ]}
+                  strokeColor={theme.colors.accent}
+                  strokeWidth={3}
+                />
+              ) : null}
+
+              {locationACoords ? (
+                <Marker
+                  coordinate={{
+                    latitude: locationACoords.lat,
+                    longitude: locationACoords.lng,
+                  }}
+                  title="Location A"
+                  description={locationA || undefined}
+                >
+                  {abPin('A')}
+                </Marker>
+              ) : null}
+
+              {locationBCoords ? (
+                <Marker
+                  coordinate={{
+                    latitude: locationBCoords.lat,
+                    longitude: locationBCoords.lng,
+                  }}
+                  title="Location B"
+                  description={locationB || undefined}
+                >
+                  {abPin('B')}
+                </Marker>
+              ) : null}
+
               {/* ⭐ Midpoint pin (custom view) */}
               <Marker
                 coordinate={{ latitude: midpoint.lat, longitude: midpoint.lng }}

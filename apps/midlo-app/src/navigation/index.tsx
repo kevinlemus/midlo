@@ -18,6 +18,8 @@ export type RootStackParamList = {
     places: Place[];
     locationA: string;
     locationB: string;
+    locationAPlaceId?: string;
+    locationBPlaceId?: string;
 
     // Persisted state so back-navigation (e.g. from Place) restores the same batch.
     resultsKey?: string;
@@ -30,6 +32,10 @@ export type RootStackParamList = {
   Map: {
     midpoint: { lat: number; lng: number };
     places: Place[];
+    locationA: string;
+    locationB: string;
+    locationAPlaceId?: string;
+    locationBPlaceId?: string;
   };
   Place: {
     placeId: string;

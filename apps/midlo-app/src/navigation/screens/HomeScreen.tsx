@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,6 +26,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const [locationA, setLocationA] = useState('');
   const [locationB, setLocationB] = useState('');
+  const [locationAPlaceId, setLocationAPlaceId] = useState<string | null>(null);
+  const [locationBPlaceId, setLocationBPlaceId] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,8 @@ export default function HomeScreen() {
         places,
         locationA,
         locationB,
+        locationAPlaceId: locationAPlaceId ?? undefined,
+        locationBPlaceId: locationBPlaceId ?? undefined,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Try again.');
@@ -71,11 +74,9 @@ export default function HomeScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
-          contentContainerStyle={{
-            flexGrow: 1,
+        <View
+          style={{
+            flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
             paddingHorizontal: theme.spacing.xl,
@@ -157,7 +158,11 @@ export default function HomeScreen() {
                 </Text>
                 <AddressAutocompleteInput
                   value={locationA}
-                  onChangeText={setLocationA}
+                  onChangeText={(t) => {
+                    setLocationA(t);
+                    setLocationAPlaceId(null);
+                  }}
+                  onSelectSuggestion={(s) => setLocationAPlaceId(s.placeId)}
                   placeholder="Enter first location"
                   returnKeyType="next"
                 />
@@ -177,7 +182,11 @@ export default function HomeScreen() {
                 </Text>
                 <AddressAutocompleteInput
                   value={locationB}
-                  onChangeText={setLocationB}
+                  onChangeText={(t) => {
+                    setLocationB(t);
+                    setLocationBPlaceId(null);
+                  }}
+                  onSelectSuggestion={(s) => setLocationBPlaceId(s.placeId)}
                   placeholder="Enter second location"
                   returnKeyType="done"
                 />
@@ -198,8 +207,8 @@ export default function HomeScreen() {
                     padding: theme.spacing.md,
                     borderRadius: theme.radii.md,
                     borderWidth: 1,
-                    borderColor: '#FCA5A5',
-                    backgroundColor: '#FEF2F2',
+                    borderColor: theme.colors.danger,
+                    backgroundColor: theme.colors.surface,
                   }}
                 >
                   <Text
@@ -226,7 +235,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           </MidloCard>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

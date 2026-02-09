@@ -37,6 +37,8 @@ export default function ResultsScreen() {
     places,
     locationA,
     locationB,
+    locationAPlaceId,
+    locationBPlaceId,
     resultsKey: initialResultsKey,
     resultsState,
   } = route.params;
@@ -539,7 +541,14 @@ export default function ResultsScreen() {
             <MidloButton
               title="View on map"
               onPress={() =>
-                navigation.navigate("Map", { midpoint, places: currentPlaces })
+                navigation.navigate("Map", {
+                  midpoint,
+                  places: currentPlaces,
+                  locationA,
+                  locationB,
+                  locationAPlaceId,
+                  locationBPlaceId,
+                })
               }
               variant="primary"
             />
