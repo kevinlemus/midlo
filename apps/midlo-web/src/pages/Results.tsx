@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { api } from "../services/api";
+import { api, ApiError } from "../services/api";
 import { track } from "../services/analytics";
 import type { Midpoint, Place } from "../types";
 
@@ -60,6 +60,16 @@ export default function ResultsPage() {
     }
     return out.slice(0, 5);
   }, []);
+
+  const batchSignature = React.useCallback(
+    (items: Place[]) =>
+      fillToFive(items)
+        .map(placeKey)
+        .slice()
+        .sort()
+        .join("|"),
+    [fillToFive],
+  );
 
   const lastBatchIndex = Math.max(0, batches.length - 1);
   const canGoPrev = activeBatchIndex > 0;
@@ -241,7 +251,11 @@ export default function ResultsPage() {
           const batch = await api.getPlaces(coords.lat, coords.lng);
           hadAnySuccessfulFetch = true;
           pool = pool.concat(batch);
-        } catch {
+        } catch (e) {
+          if (e instanceof ApiError && e.isRateLimited) {
+            setNoMoreOptionsMessage(e.message);
+            return;
+          }
           continue;
         }
 
@@ -273,6 +287,14 @@ export default function ResultsPage() {
       if (chosen && chosen.length > 0) {
         const nextIndex = batches.length;
         const nextBatch = fillToFive(chosen);
+
+        if (batchSignature(nextBatch) === batchSignature(current)) {
+          setNoMoreOptionsMessage(
+            "No new nearby options were found yet. Try again in a moment, or adjust your locations.",
+          );
+          return;
+        }
+
         setBatches((prev) => [...prev, nextBatch]);
         setActiveBatchIndex(nextIndex);
         for (const p of nextBatch) seenPlaceKeysRef.current.add(placeKey(p));

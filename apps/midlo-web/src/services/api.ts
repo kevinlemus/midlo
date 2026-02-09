@@ -18,6 +18,48 @@ function toApiUrl(path: string) {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
+function looksRateLimited(text: string) {
+  const t = (text ?? "").toLowerCase();
+  return (
+    t.includes("rate_limit") ||
+    t.includes("rate limit") ||
+    t.includes("resource_exhausted") ||
+    t.includes("quota exceeded") ||
+    t.includes('"code": 429') ||
+    t.includes(" 429")
+  );
+}
+
+function toUserMessage(status: number, text: string) {
+  if (status === 429 || looksRateLimited(text)) {
+    return "We’re getting a lot of traffic right now. Please wait a moment and try again.";
+  }
+
+  if (status >= 500) {
+    return "We couldn’t reach nearby options right now. Please try again in a moment.";
+  }
+
+  if (status === 400) {
+    return "Please double-check your locations and try again.";
+  }
+
+  return "Something went wrong. Try again.";
+}
+
+export class ApiError extends Error {
+  status: number;
+  detailsText: string;
+  isRateLimited: boolean;
+
+  constructor(status: number, detailsText: string) {
+    super(toUserMessage(status, detailsText));
+    this.name = "ApiError";
+    this.status = status;
+    this.detailsText = detailsText;
+    this.isRateLimited = status === 429 || looksRateLimited(detailsText);
+  }
+}
+
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(toApiUrl(path), {
     method: "POST",
@@ -27,7 +69,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API error ${res.status}: ${text || res.statusText}`);
+    throw new ApiError(res.status, text || res.statusText || "");
   }
 
   return (await res.json()) as T;
@@ -37,7 +79,7 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(toApiUrl(path), { signal });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`API error ${res.status}: ${text || res.statusText}`);
+    throw new ApiError(res.status, text || res.statusText || "");
   }
   return (await res.json()) as T;
 }

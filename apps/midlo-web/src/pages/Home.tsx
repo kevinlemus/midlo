@@ -6,7 +6,7 @@ import Button from "../components/Button";
 import MapView from "../components/MapView";
 import PlaceCard from "../components/PlaceCard";
 import OpenInAppBanner from "../components/OpenInAppBanner";
-import { api } from "../services/api";
+import { api, ApiError } from "../services/api";
 import type { Place } from "../types";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { track } from "../services/analytics";
@@ -109,6 +109,16 @@ export default function Home() {
     }
     return out.slice(0, 5);
   }, []);
+
+  const batchSignature = React.useCallback(
+    (items: Place[]) =>
+      fillToFive(items)
+        .map(placeKey)
+        .slice()
+        .sort()
+        .join("|"),
+    [fillToFive],
+  );
 
   const storageKey = React.useMemo(() => {
     const a = (aText ?? "").trim();
@@ -558,8 +568,12 @@ export default function Home() {
           const batch = await api.getPlaces(coords.lat, coords.lng);
           hadAnySuccessfulFetch = true;
           pool = pool.concat(batch);
-        } catch {
-          // Try the next jittered coordinate.
+        } catch (e) {
+          // Rate limit/quota errors should stop the loop immediately.
+          if (e instanceof ApiError && e.isRateLimited) {
+            setNoMoreOptionsMessage(e.message);
+            return;
+          }
           continue;
         }
 
@@ -591,6 +605,16 @@ export default function Home() {
       if (chosen && chosen.length > 0) {
         const nextIndex = batches.length;
         const nextBatch = fillToFive(chosen);
+
+        // If we couldn't produce a meaningfully different batch, don't append it.
+        // (This is the main cause of "New options" appearing to do nothing.)
+        if (batchSignature(nextBatch) === batchSignature(current)) {
+          setNoMoreOptionsMessage(
+            "No new nearby options were found yet. Try again in a moment, or adjust your locations.",
+          );
+          return;
+        }
+
         setBatches((prev) => [...prev, nextBatch]);
         setActiveBatchIndex(nextIndex);
         for (const p of nextBatch) seenPlaceKeysRef.current.add(placeKey(p));
