@@ -118,7 +118,15 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   // Waze:
   // Prefer search-style link (q) over ll-navigation to avoid coordinate-only UIs.
   const waze = (() => {
-    const wazeQuery = placeName || labelQuery || address;
+    if (placeName) {
+      // Name-only so Waze shows the POI label instead of a reverse-geocoded street.
+      return withQuery("https://waze.com/ul", {
+        q: placeName,
+        navigate: "yes",
+      });
+    }
+
+    const wazeQuery = address || labelQuery;
     return withQuery("https://waze.com/ul", {
       q: wazeQuery,
       ll: `${f(lat)},${f(lng)}`,

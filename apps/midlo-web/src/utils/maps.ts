@@ -84,11 +84,16 @@ export function mapsLinksForPlace(args: PlaceMapsArgs): MapsLinks {
   });
 
   // Waze web: use POI search near the coordinate.
-  const waze = withQuery("https://waze.com/ul", {
-    q: placeName || address || label,
-    ll,
-    navigate: "yes",
-  });
+  const waze = placeName
+    ? withQuery("https://waze.com/ul", {
+        q: placeName,
+        navigate: "yes",
+      })
+    : withQuery("https://waze.com/ul", {
+        q: address || label,
+        ll,
+        navigate: "yes",
+      });
 
   return { google, apple, waze };
 }

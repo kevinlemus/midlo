@@ -92,9 +92,21 @@ export async function openPlaceInMaps(provider: MapsProvider, args: PlaceMapsArg
   if (provider === "waze") {
     const urls: string[] = [];
 
-    // Prefer Waze's documented "search then navigate" flow.
-    // This is the closest available behavior to "navigate to this POI by name".
+    // Waze:
+    // If we include `ll`, Waze commonly prefers a reverse-geocoded street/coordinate
+    // label over the POI name. To match Google/Apple (show the place name), we
+    // first try a name-only search/navigation. If that fails, we fall back to
+    // anchoring the search near the coordinate.
     const wazeQuery = placeName || formattedAddress || label;
+
+    if (placeName) {
+      urls.push(`waze://?q=${encode(placeName)}&navigate=yes`);
+      urls.push(`https://waze.com/ul?q=${encode(placeName)}&navigate=yes`);
+      urls.push(`waze://?q=${encode(placeName)}`);
+      urls.push(`https://waze.com/ul?q=${encode(placeName)}`);
+    }
+
+    // Prefer Waze's "search then navigate" flow anchored near the coordinate.
     urls.push(`waze://?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
     urls.push(`https://waze.com/ul?q=${encode(wazeQuery)}&ll=${encode(ll)}&navigate=yes`);
 
