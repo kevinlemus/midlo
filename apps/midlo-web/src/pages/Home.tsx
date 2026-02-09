@@ -51,6 +51,16 @@ function formatMiles(mi: number): string {
   return `${Math.round(mi)} mi`;
 }
 
+function parseDistanceMiles(distance: string | undefined) {
+  const s = (distance ?? "").trim().toLowerCase();
+  const match = s.match(/(\d+(?:\.\d+)?)/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  const value = Number.parseFloat(match[1]);
+  if (!Number.isFinite(value)) return Number.POSITIVE_INFINITY;
+  if (s.includes("km")) return value * 0.621371;
+  return value;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,6 +119,17 @@ export default function Home() {
     }
     return out.slice(0, 5);
   }, []);
+
+  const sortPlacesByDistance = React.useCallback(
+    (items: Place[]) =>
+      [...items].sort((a, b) => {
+        const da = parseDistanceMiles(a.distance);
+        const db = parseDistanceMiles(b.distance);
+        if (da !== db) return da - db;
+        return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+      }),
+    [],
+  );
 
   const batchSignature = React.useCallback(
     (items: Place[]) =>
@@ -193,7 +214,7 @@ export default function Home() {
                   lng: d.lng,
                 });
               }
-              return places;
+              return sortPlacesByDistance(places);
             })
             .filter((batch) => batch.length > 0);
 
@@ -240,7 +261,9 @@ export default function Home() {
             typeof parsed.activeBatchIndex === "number"
           ) {
             setMidpoint(parsed.midpoint);
-            setBatches(parsed.batches);
+            setBatches(
+              (parsed.batches as Place[][]).map((b) => sortPlacesByDistance(b)),
+            );
             const max = Math.max(0, parsed.batches.length - 1);
             setActiveBatchIndex(
               Math.max(0, Math.min(max, parsed.activeBatchIndex)),
@@ -277,12 +300,12 @@ export default function Home() {
         setMidpoint(mp);
 
         if (snapshot?.length) {
-          setBatches([snapshot]);
+          setBatches([sortPlacesByDistance(snapshot)]);
           setActiveBatchIndex(0);
           seenPlaceKeysRef.current = new Set(snapshot.map(placeKey));
         } else {
           const pl = await api.getPlaces(mp.lat, mp.lng);
-          const next = pl.slice(0, 5);
+          const next = sortPlacesByDistance(pl).slice(0, 5);
           setBatches([next]);
           setActiveBatchIndex(0);
           seenPlaceKeysRef.current = new Set(next.map(placeKey));
@@ -407,7 +430,7 @@ export default function Home() {
         placesCount: pl.length,
       });
 
-      const next = pl.slice(0, 5);
+      const next = sortPlacesByDistance(pl).slice(0, 5);
       setMidpoint(mp);
       setBatches([next]);
       setActiveBatchIndex(0);
@@ -605,7 +628,7 @@ export default function Home() {
 
       if (chosen && chosen.length > 0) {
         const nextIndex = batches.length;
-        const nextBatch = fillToFive(chosen);
+        const nextBatch = fillToFive(sortPlacesByDistance(chosen));
 
         // If we couldn't produce a meaningfully different batch, don't append it.
         // (This is the main cause of "New options" appearing to do nothing.)

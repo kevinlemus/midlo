@@ -50,6 +50,25 @@ export default function ResultsScreen() {
     return p.placeId || `${p.name}__${p.distance}`;
   }
 
+  function distanceMiles(distance: string | undefined) {
+    const s = (distance ?? "").trim().toLowerCase();
+    const match = s.match(/(\d+(?:\.\d+)?)/);
+    if (!match) return Number.POSITIVE_INFINITY;
+    const value = Number.parseFloat(match[1]);
+    if (!Number.isFinite(value)) return Number.POSITIVE_INFINITY;
+    if (s.includes("km")) return value * 0.621371;
+    return value;
+  }
+
+  function sortPlacesByDistance(items: PlaceT[]) {
+    return [...items].sort((a, b) => {
+      const da = distanceMiles(a.distance);
+      const db = distanceMiles(b.distance);
+      if (da !== db) return da - db;
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+    });
+  }
+
   const uniqByKey = React.useCallback(
     (items: PlaceT[]): PlaceT[] => {
       const out: PlaceT[] = [];
@@ -67,7 +86,7 @@ export default function ResultsScreen() {
 
   const fillToFive = React.useCallback(
     (items: PlaceT[]): PlaceT[] => {
-      const base = items.filter(Boolean);
+      const base = sortPlacesByDistance(items.filter(Boolean));
       if (base.length === 0) return [];
 
       const out: PlaceT[] = [...base];
@@ -105,7 +124,7 @@ export default function ResultsScreen() {
         .filter((b) => Array.isArray(b))
         .map((b) => fillToFive(b));
     }
-    return [fillToFive(places.slice(0, 5))];
+    return [fillToFive(sortPlacesByDistance(places).slice(0, 5))];
   });
   const [activeBatchIndex, setActiveBatchIndex] = React.useState(() => {
     if (hasSavedState) {
@@ -131,7 +150,7 @@ export default function ResultsScreen() {
     new Set(
       (hasSavedState
         ? (resultsState!.batches as PlaceT[][]).flat().map(placeKey)
-        : fillToFive(places.slice(0, 5)).map(placeKey)) as string[],
+        : fillToFive(sortPlacesByDistance(places).slice(0, 5)).map(placeKey)) as string[],
     ),
   );
 
@@ -146,7 +165,7 @@ export default function ResultsScreen() {
     }
 
     // New search → reset in-memory state.
-    const first = fillToFive(places.slice(0, 5));
+    const first = fillToFive(sortPlacesByDistance(places).slice(0, 5));
     setBatches([first]);
     setActiveBatchIndex(0);
     seenPlaceKeysRef.current = new Set(first.map(placeKey));
@@ -397,7 +416,7 @@ export default function ResultsScreen() {
       if (chosen && chosen.length > 0) {
         setBatches((prev) => {
           const nextIndex = prev.length;
-          const nextBatch = fillToFive(chosen);
+          const nextBatch = fillToFive(sortPlacesByDistance(chosen));
           // Keep active index in sync with the actual append.
           setActiveBatchIndex(nextIndex);
           return [...prev, nextBatch];

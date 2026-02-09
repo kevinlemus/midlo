@@ -36,6 +36,27 @@ export default function ResultsPage() {
 
   const placeKey = (p: Place) => p.placeId || `${p.name}__${p.distance}`;
 
+  const parseDistanceMiles = React.useCallback((distance: string | undefined) => {
+    const s = (distance ?? "").trim().toLowerCase();
+    const match = s.match(/(\d+(?:\.\d+)?)/);
+    if (!match) return Number.POSITIVE_INFINITY;
+    const value = Number.parseFloat(match[1]);
+    if (!Number.isFinite(value)) return Number.POSITIVE_INFINITY;
+    if (s.includes("km")) return value * 0.621371;
+    return value;
+  }, []);
+
+  const sortPlacesByDistance = React.useCallback(
+    (items: Place[]) =>
+      [...items].sort((a, b) => {
+        const da = parseDistanceMiles(a.distance);
+        const db = parseDistanceMiles(b.distance);
+        if (da !== db) return da - db;
+        return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+      }),
+    [parseDistanceMiles],
+  );
+
   const uniqByKey = React.useCallback((items: Place[]): Place[] => {
     const out: Place[] = [];
     const seen = new Set<string>();
@@ -195,7 +216,7 @@ export default function ResultsPage() {
       const nearby = await api.getPlaces(mp.lat, mp.lng);
 
       setMidpoint(mp);
-      const first = nearby.slice(0, 5);
+      const first = sortPlacesByDistance(nearby).slice(0, 5);
       setBatches([first]);
       setActiveBatchIndex(0);
       seenPlaceKeysRef.current = new Set(first.map(placeKey));
@@ -287,7 +308,7 @@ export default function ResultsPage() {
 
       if (chosen && chosen.length > 0) {
         const nextIndex = batches.length;
-        const nextBatch = fillToFive(chosen);
+        const nextBatch = fillToFive(sortPlacesByDistance(chosen));
 
         if (batchSignature(nextBatch) === batchSignature(current)) {
           setNoMoreOptionsMessage(
