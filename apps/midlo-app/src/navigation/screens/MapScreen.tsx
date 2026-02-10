@@ -48,28 +48,23 @@ export default function MapScreen() {
   React.useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      try {
-        if (locationAPlaceId) {
-          const a = await api.getPlaceDetails(locationAPlaceId);
-          if (!cancelled) setLocationACoords({ lat: a.lat, lng: a.lng });
-        } else if (!cancelled) {
-          setLocationACoords(null);
-        }
-      } catch {
-        if (!cancelled) setLocationACoords(null);
-      }
+    const aId = typeof locationAPlaceId === 'string' ? locationAPlaceId.trim() : '';
+    const bId = typeof locationBPlaceId === 'string' ? locationBPlaceId.trim() : '';
 
-      try {
-        if (locationBPlaceId) {
-          const b = await api.getPlaceDetails(locationBPlaceId);
-          if (!cancelled) setLocationBCoords({ lat: b.lat, lng: b.lng });
-        } else if (!cancelled) {
-          setLocationBCoords(null);
-        }
-      } catch {
-        if (!cancelled) setLocationBCoords(null);
-      }
+    (async () => {
+      const [a, b] = await Promise.all([
+        aId
+          ? api.getPlaceDetails(aId).then((d) => ({ ok: true as const, d })).catch(() => ({ ok: false as const }))
+          : Promise.resolve({ ok: false as const }),
+        bId
+          ? api.getPlaceDetails(bId).then((d) => ({ ok: true as const, d })).catch(() => ({ ok: false as const }))
+          : Promise.resolve({ ok: false as const }),
+      ]);
+
+      if (cancelled) return;
+
+      setLocationACoords(a.ok ? { lat: a.d.lat, lng: a.d.lng } : null);
+      setLocationBCoords(b.ok ? { lat: b.d.lat, lng: b.d.lng } : null);
     })();
 
     return () => {
@@ -240,7 +235,7 @@ export default function MapScreen() {
                       longitude: locationBCoords.lng,
                     },
                   ]}
-                  strokeColor={theme.colors.accent}
+                  strokeColor={theme.colors.primary}
                   strokeWidth={3}
                 />
               ) : null}

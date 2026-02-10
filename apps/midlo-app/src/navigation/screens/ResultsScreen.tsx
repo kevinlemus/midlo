@@ -20,6 +20,7 @@ import MidloCard from "../../components/MidloCard";
 import { midpointShareUrl } from "../../utils/shareLinks";
 import { track } from "../../services/analytics";
 import { api } from "../../services/api";
+import { openPointInMaps } from "../../utils/openMaps";
 
 import Logo from "../../assets/images/midlo_logo.png";
 
@@ -181,13 +182,19 @@ export default function ResultsScreen() {
   const lastPersistedRef = React.useRef<string>("");
   React.useEffect(() => {
     try {
-      const payload = {
+      const payload: Partial<RootStackParamList["Results"]> = {
         resultsKey: currentResultsKey,
         resultsState: {
           batches,
           activeBatchIndex,
           rescanCount,
         },
+        // Keep these on the route so downstream screens (Map) can reliably
+        // render A/B markers and the connecting line.
+        locationA,
+        locationB,
+        locationAPlaceId,
+        locationBPlaceId,
       };
       const serialized = JSON.stringify(payload);
       if (serialized === lastPersistedRef.current) return;
@@ -197,7 +204,17 @@ export default function ResultsScreen() {
     } catch {
       // ignore persistence failures
     }
-  }, [batches, activeBatchIndex, rescanCount, currentResultsKey, navigation]);
+  }, [
+    batches,
+    activeBatchIndex,
+    rescanCount,
+    currentResultsKey,
+    locationA,
+    locationB,
+    locationAPlaceId,
+    locationBPlaceId,
+    navigation,
+  ]);
 
   const lastBatchIndex = Math.max(0, batches.length - 1);
   const canGoPrev = activeBatchIndex > 0;
@@ -534,6 +551,106 @@ export default function ResultsScreen() {
                 Lat {midpoint.lat.toFixed(4)} · Lng {midpoint.lng.toFixed(4)}
               </Text>
             </View>
+
+            <View style={{ marginTop: theme.spacing.md, width: "100%" }}>
+              <Text
+                style={{
+                  fontSize: theme.typography.caption,
+                  color: theme.colors.textSecondary,
+                  textAlign: "center",
+                  marginBottom: theme.spacing.xs,
+                }}
+              >
+                Open midpoint in
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: theme.spacing.sm,
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
+              >
+                <Pressable
+                  onPress={() =>
+                    void openPointInMaps("google", {
+                      lat: midpoint.lat,
+                      lng: midpoint.lng,
+                      label: "Midpoint",
+                    })
+                  }
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: theme.radii.pill,
+                    borderWidth: 1,
+                    borderColor: theme.colors.accent,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.colors.primaryDark,
+                      fontSize: theme.typography.caption,
+                    }}
+                  >
+                    Google Maps
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() =>
+                    void openPointInMaps("apple", {
+                      lat: midpoint.lat,
+                      lng: midpoint.lng,
+                      label: "Midpoint",
+                    })
+                  }
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: theme.radii.pill,
+                    borderWidth: 1,
+                    borderColor: theme.colors.accent,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.colors.primaryDark,
+                      fontSize: theme.typography.caption,
+                    }}
+                  >
+                    Apple Maps
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() =>
+                    void openPointInMaps("waze", {
+                      lat: midpoint.lat,
+                      lng: midpoint.lng,
+                      label: "Midpoint",
+                    })
+                  }
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: theme.radii.pill,
+                    borderWidth: 1,
+                    borderColor: theme.colors.accent,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: theme.colors.primaryDark,
+                      fontSize: theme.typography.caption,
+                    }}
+                  >
+                    Waze
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
 
           {/* NAVIGATION BUTTONS */}
@@ -543,7 +660,7 @@ export default function ResultsScreen() {
               onPress={() =>
                 navigation.navigate("Map", {
                   midpoint,
-                  places: currentPlaces,
+                  places: uniqByKey(batches.flat()),
                   locationA,
                   locationB,
                   locationAPlaceId,

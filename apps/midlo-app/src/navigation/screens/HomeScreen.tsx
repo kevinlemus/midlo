@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,10 +25,18 @@ type HomeNav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
+  const scrollRef = React.useRef<ScrollView | null>(null);
   const [locationA, setLocationA] = useState('');
   const [locationB, setLocationB] = useState('');
   const [locationAPlaceId, setLocationAPlaceId] = useState<string | null>(null);
   const [locationBPlaceId, setLocationBPlaceId] = useState<string | null>(null);
+
+  const locationAYRef = React.useRef(0);
+  const locationBYRef = React.useRef(0);
+
+  const scrollToY = (y: number) => {
+    scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,15 +81,20 @@ export default function HomeScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
+        <ScrollView
+          ref={(r) => {
+            scrollRef.current = r;
+          }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'on-drag' : 'none'}
+          contentContainerStyle={{
+            flexGrow: 1,
             alignItems: 'center',
             paddingHorizontal: theme.spacing.xl,
-            paddingVertical: theme.spacing.xl,
+            paddingTop: theme.spacing.xl,
+            paddingBottom: theme.spacing.xl * 2,
           }}
         >
           <MidloCard>
@@ -156,16 +170,23 @@ export default function HomeScreen() {
                 >
                   Location A
                 </Text>
-                <AddressAutocompleteInput
-                  value={locationA}
-                  onChangeText={(t) => {
-                    setLocationA(t);
-                    setLocationAPlaceId(null);
+                <View
+                  onLayout={(e) => {
+                    locationAYRef.current = e.nativeEvent.layout.y;
                   }}
-                  onSelectSuggestion={(s) => setLocationAPlaceId(s.placeId)}
-                  placeholder="Enter first location"
-                  returnKeyType="next"
-                />
+                >
+                  <AddressAutocompleteInput
+                    value={locationA}
+                    onChangeText={(t) => {
+                      setLocationA(t);
+                      setLocationAPlaceId(null);
+                    }}
+                    onSelectSuggestion={(s) => setLocationAPlaceId(s.placeId)}
+                    onFocus={() => scrollToY(locationAYRef.current - theme.spacing.lg)}
+                    placeholder="Enter first location"
+                    returnKeyType="next"
+                  />
+                </View>
               </View>
 
               <View>
@@ -180,16 +201,23 @@ export default function HomeScreen() {
                 >
                   Location B
                 </Text>
-                <AddressAutocompleteInput
-                  value={locationB}
-                  onChangeText={(t) => {
-                    setLocationB(t);
-                    setLocationBPlaceId(null);
+                <View
+                  onLayout={(e) => {
+                    locationBYRef.current = e.nativeEvent.layout.y;
                   }}
-                  onSelectSuggestion={(s) => setLocationBPlaceId(s.placeId)}
-                  placeholder="Enter second location"
-                  returnKeyType="done"
-                />
+                >
+                  <AddressAutocompleteInput
+                    value={locationB}
+                    onChangeText={(t) => {
+                      setLocationB(t);
+                      setLocationBPlaceId(null);
+                    }}
+                    onSelectSuggestion={(s) => setLocationBPlaceId(s.placeId)}
+                    onFocus={() => scrollToY(locationBYRef.current - theme.spacing.lg)}
+                    placeholder="Enter second location"
+                    returnKeyType="done"
+                  />
+                </View>
               </View>
 
               <View style={{ marginTop: theme.spacing.lg }}>
@@ -235,7 +263,7 @@ export default function HomeScreen() {
               </Text>
             </View>
           </MidloCard>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

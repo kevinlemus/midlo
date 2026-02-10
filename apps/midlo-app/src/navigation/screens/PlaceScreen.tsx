@@ -200,8 +200,8 @@ export default function PlaceScreen() {
                 padding: theme.spacing.md,
                 borderRadius: theme.radii.md,
                 borderWidth: 1,
-                borderColor: "#FCA5A5",
-                backgroundColor: "#FEF2F2",
+                borderColor: theme.colors.danger,
+                backgroundColor: theme.colors.surface,
               }}
             >
               <Text

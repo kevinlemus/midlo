@@ -20,6 +20,8 @@ export default function MapScreen() {
   const fallbackParams: RootStackParamList['Map'] = {
     midpoint: { lat: 0, lng: 0 },
     places: [],
+    locationA: '',
+    locationB: '',
   };
   const { midpoint, places } = route.params ?? fallbackParams;
 
